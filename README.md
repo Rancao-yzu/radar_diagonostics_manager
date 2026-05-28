@@ -17,9 +17,11 @@ WF_Radar_Diagonostics_manager/
 └── src_example/         # 示例/调试脚本（不可修改）
 ```
 
-> **注意**：必须使用 `lib/` 下的 isotp 和 uds 库，而非 pip 安装的版本。
-> 程序启动时 `main.py` 会自动将 `lib/` 加入 `sys.path`。
-> 已完成src/ota/ota_test.py，用于测试 OTA 升级流程！
+> **注意**：必须使用 `lib/` 下的 isotp 和 uds 库，而非 pip 安装的版本。  
+> 程序启动时 `main.py` 会自动将 `lib/` 加入 `sys.path`。  
+> 已完成src/ota/ota_test.py，用于测试 OTA 升级流程！  
+
+- 其中src/ota/ota_test.py为单独的ota测试程序，不侵入主程序。
 
 # OTA 升级
 - 提供Hex文件
