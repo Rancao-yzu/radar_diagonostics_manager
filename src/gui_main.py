@@ -227,6 +227,13 @@ class RadarDiagnosticsGUI:
                                            fg=ORANGE_PRIMARY, hover=ORANGE_LIGHT, width=130, height=32)
         self.btn_clear_right.pack(side=tk.LEFT)
 
+    def _set_cal_buttons_state(self, state):
+        """设置标定按钮状态"""
+        for btn in (self.btn_static_left, self.btn_static_right,
+                     self.btn_param_left, self.btn_param_right,
+                     self.btn_clear_left, self.btn_clear_right):
+            btn.configure(state=state)
+
     def _build_log_area(self):
         """构建日志区域：显示 CAN 通讯日志"""
         card = ttk.Frame(self.bottom_frame, style='Card.TFrame')

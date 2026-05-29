@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """雷达诊断管理程序入口 —— 启动 GUI 并绑定事件"""
-
 import sys
 import os
 import threading
@@ -12,7 +11,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 from gui_main import RadarDiagnosticsGUI
 from can_config import check_can_interfaces
 from calibration.calibration import CalibrationManager
-
 
 class Application:
     """应用程序主类：创建 GUI 实例，绑定按钮事件"""
@@ -36,18 +34,12 @@ class Application:
         self.gui.btn_refresh.configure(command=self._refresh_channels)
 
         # 标定功能按钮
-        self.gui.btn_static_left.configure(command=lambda: threading.Thread(
-            target=self._on_static_cal, args=(False,), daemon=True).start())
-        self.gui.btn_static_right.configure(command=lambda: threading.Thread(
-            target=self._on_static_cal, args=(True,), daemon=True).start())
-        self.gui.btn_param_left.configure(command=lambda: threading.Thread(
-            target=self._on_send_params, args=(False,), daemon=True).start())
-        self.gui.btn_param_right.configure(command=lambda: threading.Thread(
-            target=self._on_send_params, args=(True,), daemon=True).start())
-        self.gui.btn_clear_left.configure(command=lambda: threading.Thread(
-            target=self._on_clear_params, args=(False,), daemon=True).start())
-        self.gui.btn_clear_right.configure(command=lambda: threading.Thread(
-            target=self._on_clear_params, args=(True,), daemon=True).start())
+        self.gui.btn_static_left.configure(command=lambda: self._cal_action(self._on_static_cal, False))
+        self.gui.btn_static_right.configure(command=lambda: self._cal_action(self._on_static_cal, True))
+        self.gui.btn_param_left.configure(command=lambda: self._cal_action(self._on_send_params, False))
+        self.gui.btn_param_right.configure(command=lambda: self._cal_action(self._on_send_params, True))
+        self.gui.btn_clear_left.configure(command=lambda: self._cal_action(self._on_clear_params, False))
+        self.gui.btn_clear_right.configure(command=lambda: self._cal_action(self._on_clear_params, True))
 
         # 日志下载按钮
         self.gui.btn_download_log.configure(command=self.gui.download_log)
@@ -70,6 +62,13 @@ class Application:
             )
             self._cal_mgr.connect()
         return self._cal_mgr
+
+    def _cal_action(self, target, *args):
+        """执行标定操作，禁用按钮，完成后启用"""
+        self.gui._set_cal_buttons_state(tk.DISABLED)
+        threading.Thread(target=target, args=args, daemon=True).start()
+        # 等待标定操作完成,500ms 后启用按钮状态
+        self.root.after(500, lambda: self.gui._set_cal_buttons_state(tk.NORMAL))
 
     def _on_static_cal(self, is_right_radar):
         """触发静态标定"""
