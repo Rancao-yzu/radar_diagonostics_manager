@@ -4,22 +4,21 @@ import os
 import time
 import struct
 import configparser
-
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'lib'))
-
 import can
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'lib'))
 
 # 超时时间定义
 CAL_TIMEOUT_STATIC = 10.0
 CAL_TIMEOUT_PARAM = 3.0
 
+# CAN 配置文件路径
 _CAL_CONFIG_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     'config', 'config_c.ini'
 )
 
-
+# 加载 CAN ID 配置
 def _load_can_ids():
     cfg = configparser.ConfigParser()
     cfg.read(_CAL_CONFIG_PATH, encoding='utf-8')
@@ -34,10 +33,13 @@ def _load_can_ids():
         'right_param_recv':  int(cfg.get('CAN', 'right_param_recv_id'), 0),
     }
 
-
-# 超时时间定义
-CAL_TIMEOUT_STATIC = 10.0
-CAL_TIMEOUT_PARAM = 3.0
+def _clean_val(cfg, section, key):
+    val = cfg.get(section, key)
+    for ch in (';', '#'):
+        idx = val.find(ch)
+        if idx != -1:
+            val = val[:idx]
+    return val.strip()
 
 # 参数数据格式：7个float + 1个unsigned char（大端序）
 PARAM_STRUCT = struct.Struct('>fffffffB')
@@ -107,7 +109,13 @@ class CalibrationManager:
 
     def _send_and_wait(self, send_id, send_data, expect_recv_id, expect_data, timeout):
         """发送CAN消息并等待响应"""
-        msg = can.Message(arbitration_id=send_id, data=send_data[:64], is_extended_id=False, is_fd=True, dlc=len(send_data))
+        msg = can.Message(
+            arbitration_id=send_id, 
+            data=send_data[:64], 
+            is_extended_id=False, 
+            is_fd=True, 
+            dlc=len(send_data)
+        )
         self.bus.send(msg)
         self._log(f"[CAL SEND] ID=0x{send_id:03X} DLC={len(send_data)} Data={[hex(b) for b in send_data]}", "SEND")
 
@@ -185,17 +193,9 @@ class CalibrationManager:
         self._log(f"  标定结果: {result['cal_result_text']}", "OK")
         self._log(f"  水平偏差角度: {horizontal_angle:.2f}°", "OK")
         self._log(f"  垂直偏差角度: {vertical_angle:.2f}°", "OK")
-        self._log(f"  错误码: {result['error_code_text']}", "OK")
+        self._log(f"  标定状态: {result['error_code_text']}", "OK")
 
         return result
-
-    def _clean_val(self, cfg, section, key):
-        val = cfg.get(section, key)
-        for ch in (';', '#'):
-            idx = val.find(ch)
-            if idx != -1:
-                val = val[:idx]
-        return val.strip()
 
     def _read_cal_params(self, is_right_radar):
         section = 'RightRadar' if is_right_radar else 'LeftRadar'
@@ -213,14 +213,14 @@ class CalibrationManager:
 
         try:
             params = {
-                'vehicle_height': float(self._clean_val(cfg, section, 'vehicle_height')),
-                'x_offset':       float(self._clean_val(cfg, section, 'x_offset')),
-                'y_offset':       float(self._clean_val(cfg, section, 'y_offset')),
-                'z_offset':       float(self._clean_val(cfg, section, 'z_offset')),
-                'yaw_angle':      float(self._clean_val(cfg, section, 'yaw_angle')),
-                'pitch_angle':    float(self._clean_val(cfg, section, 'pitch_angle')),
-                'roll_angle':     float(self._clean_val(cfg, section, 'roll_angle')),
-                'orientation':    int(self._clean_val(cfg, section, 'orientation')),
+                'vehicle_height': float(_clean_val(cfg, section, 'vehicle_height')),
+                'x_offset':       float(_clean_val(cfg, section, 'x_offset')),
+                'y_offset':       float(_clean_val(cfg, section, 'y_offset')),
+                'z_offset':       float(_clean_val(cfg, section, 'z_offset')),
+                'yaw_angle':      float(_clean_val(cfg, section, 'yaw_angle')),
+                'pitch_angle':    float(_clean_val(cfg, section, 'pitch_angle')),
+                'roll_angle':     float(_clean_val(cfg, section, 'roll_angle')),
+                'orientation':    int(_clean_val(cfg, section, 'orientation')),
             }
         except (configparser.NoOptionError, ValueError) as e:
             self._log(f"[CAL] 读取{radar_name}标定参数失败: {e}", "ERROR")

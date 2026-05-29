@@ -11,6 +11,7 @@ WF_Radar_Diagonostics_manager/
    └── can_config.py    # CAN 通道检测
 ├── src/                 # 主程序源码
 ├── ota/                 # OTA 升级相关代码
+├── calibration/         # calibration相关代码
 │   ├── main.py          # 入口：启动 GUI，绑定事件
 │   ├── gui_main.py      # GUI 主类：布局构建、功能面板
 │   ├── gui_styles.py    # 主题色、自定义按钮、样式配置

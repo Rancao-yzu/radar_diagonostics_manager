@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from gui_main import RadarDiagnosticsGUI
 from can_config import check_can_interfaces
-from calibration.calibration import CalibrationManager
+from calibration import CalibrationManager
 
 class Application:
     """应用程序主类：创建 GUI 实例，绑定按钮事件"""
@@ -67,8 +67,8 @@ class Application:
         """执行标定操作，禁用按钮，完成后启用"""
         self.gui._set_cal_buttons_state(tk.DISABLED)
         threading.Thread(target=target, args=args, daemon=True).start()
-        # 等待标定操作完成,500ms 后启用按钮状态
-        self.root.after(500, lambda: self.gui._set_cal_buttons_state(tk.NORMAL))
+        # 等待标定操作完成,1000ms 后启用按钮状态
+        self.root.after(1000, lambda: self.gui._set_cal_buttons_state(tk.NORMAL))
 
     def _on_static_cal(self, is_right_radar):
         """触发静态标定"""
