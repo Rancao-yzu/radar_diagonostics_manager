@@ -7,6 +7,7 @@
 ```
 WF_Radar_Diagonostics_manager/
 ├── images/              # 资源文件（logo 等）
+├── config/              #  CAN 配置文件
 ├── lib/                 # 本地库（isotp + uds）（不可修改）
    └── can_config.py    # CAN 通道检测
 ├── src/                 # 主程序源码
