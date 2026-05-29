@@ -41,8 +41,8 @@ def _clean_val(cfg, section, key):
             val = val[:idx]
     return val.strip()
 
-# 参数数据格式：7个float + 1个unsigned char（大端序）
-PARAM_STRUCT = struct.Struct('>fffffffB')
+# 参数数据格式：7个float（大端序）
+PARAM_STRUCT = struct.Struct('>fffffff')
 
 PROCESS_STATUS_MAP = {
     0: "进程未激活",
@@ -61,14 +61,12 @@ RESULT_STATUS_MAP = {
 
 ERROR_CODE_MAP = {
     1: "开始",
-    2: "停止",
-    3: "未完成",
-    4: "车速超限",
-    5: "角度过大",
-    6: "角度过小",
-    7: "目标数异常",
-    8: "超时",
-    9: "执行成功",
+    2: "车速超限",
+    3: "角度过大",
+    4: "角度过小",
+    5: "目标数异常",
+    6: "超时",
+    7: "执行成功",
 }
 
 
@@ -125,9 +123,9 @@ class CalibrationManager:
             recv = self.bus.recv(timeout=min(remaining, 0.1))
             if recv is None:
                 continue
-            self._log(f"[CAL RECV] ID=0x{recv.arbitration_id:03X} Data={[hex(b) for b in recv.data]}", "RECV")
 
             if recv.arbitration_id == expect_recv_id and list(recv.data[:len(expect_data)]) == expect_data:
+                self._log(f"[CAL RECV] ID=0x{recv.arbitration_id:03X} Data={[hex(b) for b in recv.data]}", "RECV")
                 return recv
 
         self._log(f"[CAL] 等待响应超时 ID=0x{expect_recv_id:03X}", "ERROR")
@@ -154,8 +152,8 @@ class CalibrationManager:
             recv = self.bus.recv(timeout=min(remaining, 0.1))
             if recv is None:
                 continue
-            self._log(f"[CAL RECV] ID=0x{recv.arbitration_id:03X} Data={[hex(b) for b in recv.data]}", "RECV")
             if recv.arbitration_id == recv_id and len(recv.data) >= 2 and recv.data[0] == 0x04:
+                self._log(f"[CAL RECV] ID=0x{recv.arbitration_id:03X} Data={[hex(b) for b in recv.data]}", "RECV")
                 result = self._parse_cal_result(recv.data[1:])
                 return result
 
@@ -164,35 +162,32 @@ class CalibrationManager:
 
     def _parse_cal_result(self, data):
         """解析标定结果数据"""
-        if len(data) < 8:
+        if len(data) < 20:
             self._log("[CAL] 标定结果数据长度不足", "ERROR")
             return None
 
-        cal_result = (data[0] >> 4) & 0x0F
-        process_status = (data[1] >> 4) & 0x0F
-        horizontal_raw = int.from_bytes(data[2:4], byteorder='big', signed=True)
-        vertical_raw = int.from_bytes(data[4:6], byteorder='big', signed=True)
-        error_code = data[6]
-
-        horizontal_angle = horizontal_raw * 0.01
-        vertical_angle = vertical_raw * 0.01
+        cal_result = struct.unpack('>I', data[0:4])[0]
+        process_status = struct.unpack('>I', data[4:8])[0]
+        horizontal_raw = struct.unpack('>f', data[8:12])[0]
+        vertical_raw = struct.unpack('>f', data[12:16])[0]
+        error_code = struct.unpack('>I', data[16:20])[0]
 
         result = {
             "process_status": process_status,
             "process_status_text": PROCESS_STATUS_MAP.get(process_status, f"未知({process_status})"),
             "cal_result": cal_result,
             "cal_result_text": RESULT_STATUS_MAP.get(cal_result, f"未知({cal_result})"),
-            "horizontal_angle": horizontal_angle,
-            "vertical_angle": vertical_angle,
+            "horizontal_angle": horizontal_raw,
+            "vertical_angle": vertical_raw,
             "error_code": error_code,
             "error_code_text": ERROR_CODE_MAP.get(error_code, f"未知({error_code})"),
         }
 
         self._log(f"[CAL] 标定结果解析:", "OK")
-        self._log(f"  进程状态: {result['process_status_text']}", "OK")
         self._log(f"  标定结果: {result['cal_result_text']}", "OK")
-        self._log(f"  水平偏差角度: {horizontal_angle:.2f}°", "OK")
-        self._log(f"  垂直偏差角度: {vertical_angle:.2f}°", "OK")
+        self._log(f"  进程状态: {result['process_status_text']}", "OK")
+        self._log(f"  水平偏差角度: {horizontal_raw:.2f}°", "OK")
+        self._log(f"  垂直偏差角度: {vertical_raw:.2f}°", "OK")
         self._log(f"  标定状态: {result['error_code_text']}", "OK")
 
         return result
@@ -220,7 +215,6 @@ class CalibrationManager:
                 'yaw_angle':      float(_clean_val(cfg, section, 'yaw_angle')),
                 'pitch_angle':    float(_clean_val(cfg, section, 'pitch_angle')),
                 'roll_angle':     float(_clean_val(cfg, section, 'roll_angle')),
-                'orientation':    int(_clean_val(cfg, section, 'orientation')),
             }
         except (configparser.NoOptionError, ValueError) as e:
             self._log(f"[CAL] 读取{radar_name}标定参数失败: {e}", "ERROR")
@@ -230,7 +224,7 @@ class CalibrationManager:
                   f"vh={params['vehicle_height']:.2f} x={params['x_offset']:.2f} "
                   f"y={params['y_offset']:.2f} z={params['z_offset']:.2f} "
                   f"yaw={params['yaw_angle']:.2f} pitch={params['pitch_angle']:.2f} "
-                  f"roll={params['roll_angle']:.2f} orient={params['orientation']}", "OK")
+                  f"roll={params['roll_angle']:.2f}", "OK")
         return params
 
     def send_params(self, is_right_radar):
@@ -248,9 +242,8 @@ class CalibrationManager:
             params['vehicle_height'],
             params['x_offset'], params['y_offset'], params['z_offset'],
             params['yaw_angle'], params['pitch_angle'], params['roll_angle'],
-            params['orientation'],
         )
-        data = [0x01] + list(packed) + [0x00] * 34
+        data = [0x01] + list(packed) + [0x00] * 35
 
         self._log(f"[CAL] 向{radar_name}下发标定参数...", "INFO")
         resp = self._send_and_wait(send_id, data, recv_id, [0x01, 0x01], CAL_TIMEOUT_PARAM)
