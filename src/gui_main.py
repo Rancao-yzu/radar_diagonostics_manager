@@ -3,7 +3,7 @@
 
 import os
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
 
 from gui_styles import (ORANGE_PRIMARY, ORANGE_LIGHT, BG_CARD, TEXT_DARK,ORANGE_ACCENT, 
@@ -185,14 +185,79 @@ class RadarDiagnosticsGUI:
         tk.Label(inner, text="标定和标定查询", font=('Microsoft YaHei', 11, 'bold'),
                  fg=TEXT_DARK, bg=BG_CARD).pack(anchor=tk.W, pady=(0, 10))
 
-        placeholder = tk.Frame(inner, bg=ORANGE_LIGHT)
-        placeholder.pack(fill=tk.BOTH, expand=True)
+        section_static = ttk.LabelFrame(inner, text="静态标定", style='Card.TLabelframe')
+        section_static.pack(fill=tk.X, pady=(0, 8))
 
-        ph_inner = tk.Frame(placeholder, bg=ORANGE_LIGHT)
-        ph_inner.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        static_inner = tk.Frame(section_static, bg=BG_CARD)
+        static_inner.pack(fill=tk.X, padx=CARD_PAD[0], pady=CARD_PAD[1])
 
-        tk.Label(ph_inner, text="标定和标定查询功能开发中...",
-                 font=('Microsoft YaHei', 14), fg=ORANGE_ACCENT, bg=ORANGE_LIGHT).pack()
+        self.btn_static_left = _FlatButton(static_inner, text="左雷达静态标定", bg=ORANGE_PRIMARY,
+                                           hover=ORANGE_ACCENT, width=140, height=32)
+        self.btn_static_left.pack(side=tk.LEFT, padx=(0, 12))
+
+        self.btn_static_right = _FlatButton(static_inner, text="右雷达静态标定", bg=ORANGE_PRIMARY,
+                                            hover=ORANGE_ACCENT, width=140, height=32)
+        self.btn_static_right.pack(side=tk.LEFT)
+
+        section_param = ttk.LabelFrame(inner, text="标定外参配置", style='Card.TLabelframe')
+        section_param.pack(fill=tk.X, pady=(0, 8))
+
+        param_inner = tk.Frame(section_param, bg=BG_CARD)
+        param_inner.pack(fill=tk.X, padx=CARD_PAD[0], pady=CARD_PAD[1])
+
+        fields = [
+            ("可通行高度(车辆高度) (m):", "cal_vehicle_height", "0.0"),
+            ("雷达纵向安装偏差 (m):", "cal_x_offset", "0.0"),
+            ("雷达横向安装偏差 (m):", "cal_y_offset", "0.0"),
+            ("雷达对地安装高度 (m):", "cal_z_offset", "0.0"),
+            ("雷达水平偏转角 (°):", "cal_yaw_angle", "0.0"),
+            ("雷达俯仰角 (°):", "cal_pitch_angle", "0.0"),
+            ("雷达横滚角 (°):", "cal_roll_angle", "0.0"),
+        ]
+
+        tk.Label(param_inner, text="雷达接插口方向:", font=('Microsoft YaHei', 9),
+                 fg=ORANGE_ACCENT, bg=BG_CARD).grid(row=len(fields), column=0, sticky=tk.W, pady=2, padx=(0, 8))
+        self.cal_orientation_var = tk.StringVar(value="1")
+        orient_combo = ttk.Combobox(param_inner, textvariable=self.cal_orientation_var,
+                                    values=["1(正接)", "2(反接)"], state="readonly", width=17)
+        orient_combo.grid(row=len(fields), column=1, sticky=tk.W, pady=2, padx=(0, 16))
+
+        for i, (label_text, attr_name, default_val) in enumerate(fields):
+            tk.Label(param_inner, text=label_text, font=('Microsoft YaHei', 9),
+                     fg=ORANGE_ACCENT, bg=BG_CARD).grid(row=i, column=0, sticky=tk.W, pady=2, padx=(0, 8))
+            var = tk.StringVar(value=default_val)
+            setattr(self, attr_name + "_var", var)
+            tk.Entry(param_inner, textvariable=var, width=20).grid(row=i, column=1, sticky=tk.W, pady=2, padx=(0, 16))
+
+        btn_row = tk.Frame(param_inner, bg=BG_CARD)
+        btn_row.grid(row=len(fields) + 1, column=0, columnspan=2, sticky=tk.W, pady=(8, 0))
+
+        self.btn_param_left = _FlatButton(btn_row, text="左雷达下发参数", bg=ORANGE_PRIMARY,
+                                          hover=ORANGE_ACCENT, width=130, height=32)
+        self.btn_param_left.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.btn_param_right = _FlatButton(btn_row, text="右雷达下发参数", bg=ORANGE_PRIMARY,
+                                           hover=ORANGE_ACCENT, width=130, height=32)
+        self.btn_param_right.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.btn_clear_left = _FlatButton(btn_row, text="左雷达清除参数", bg="#FFD8D8",
+                                          fg=ORANGE_PRIMARY, hover=ORANGE_LIGHT, width=130, height=32)
+        self.btn_clear_left.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.btn_clear_right = _FlatButton(btn_row, text="右雷达清除参数", bg="#FFD8D8",
+                                           fg=ORANGE_PRIMARY, hover=ORANGE_LIGHT, width=130, height=32)
+        self.btn_clear_right.pack(side=tk.LEFT)
+
+    def get_cal_params(self):
+        vehicle_height = float(self.cal_vehicle_height_var.get())
+        x = float(self.cal_x_offset_var.get())
+        y = float(self.cal_y_offset_var.get())
+        z = float(self.cal_z_offset_var.get())
+        yaw = float(self.cal_yaw_angle_var.get())
+        pitch = float(self.cal_pitch_angle_var.get())
+        roll = float(self.cal_roll_angle_var.get())
+        orientation = int(self.cal_orientation_var.get()[0])
+        return vehicle_height, x, y, z, yaw, pitch, roll, orientation
 
     def _build_log_area(self):
         """构建日志区域：显示 CAN 通讯日志"""
@@ -207,6 +272,10 @@ class RadarDiagnosticsGUI:
 
         tk.Label(header, text="通讯日志", font=('Microsoft YaHei', 10, 'bold'),
                  fg=TEXT_DARK, bg=BG_CARD).pack(side=tk.LEFT)
+
+        self.btn_download_log = _FlatButton(header, text="↓", bg=ORANGE_PRIMARY,
+                                            hover=ORANGE_ACCENT, width=24, height=20)
+        self.btn_download_log.pack(side=tk.LEFT, padx=(6, 0))
 
         legend = tk.Frame(header, bg=BG_CARD)
         legend.pack(side=tk.RIGHT)
@@ -279,9 +348,26 @@ class RadarDiagnosticsGUI:
         """获取当前选择的 CAN 通道、波特率和数据波特率"""
         return self.channel_var.get(), self.bitrate_var.get(), self.data_bitrate_var.get()
 
+    def get_channel_number(self):
+        channel_str = self.channel_var.get()
+        return channel_str.split(":")[0].strip() if channel_str else ""
+
     def log(self, message, tag="INFO"):
         """将日志消息添加到文本框中"""
         self.log_text.configure(state=tk.NORMAL)
         self.log_text.insert(tk.END, message + "\n", tag)
         self.log_text.see(tk.END)
         self.log_text.configure(state=tk.DISABLED)
+
+    def download_log(self):
+        """导出日志到文件"""
+        filepath = filedialog.asksaveasfilename(
+            defaultextension=".log",
+            filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
+        )
+        if not filepath:
+            return
+        content = self.log_text.get("1.0", tk.END)
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(content)
+        self.log(f"[INFO] 日志已保存至: {filepath}", "OK")

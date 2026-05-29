@@ -3,6 +3,7 @@
 
 import sys
 import os
+import threading
 import tkinter as tk
 
 # 将 lib/ 目录加入搜索路径，确保使用项目内置的 isotp/uds 库
@@ -10,6 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from gui_main import RadarDiagnosticsGUI
 from can_config import check_can_interfaces
+from calibration.calibration import CalibrationManager
 
 
 class Application:
@@ -18,6 +20,7 @@ class Application:
     def __init__(self):
         self.root = tk.Tk()
         self.gui = RadarDiagnosticsGUI(self.root)
+        self._cal_mgr = None
 
         self._bind_events()
 
@@ -32,8 +35,63 @@ class Application:
         self.gui.btn_connect.configure(command=self._on_connect)
         self.gui.btn_refresh.configure(command=self._refresh_channels)
 
+        # 标定功能按钮
+        self.gui.btn_static_left.configure(command=lambda: threading.Thread(
+            target=self._on_static_cal, args=(False,), daemon=True).start())
+        self.gui.btn_static_right.configure(command=lambda: threading.Thread(
+            target=self._on_static_cal, args=(True,), daemon=True).start())
+        self.gui.btn_param_left.configure(command=lambda: threading.Thread(
+            target=self._on_send_params, args=(False,), daemon=True).start())
+        self.gui.btn_param_right.configure(command=lambda: threading.Thread(
+            target=self._on_send_params, args=(True,), daemon=True).start())
+        self.gui.btn_clear_left.configure(command=lambda: threading.Thread(
+            target=self._on_clear_params, args=(False,), daemon=True).start())
+        self.gui.btn_clear_right.configure(command=lambda: threading.Thread(
+            target=self._on_clear_params, args=(True,), daemon=True).start())
+
+        # 日志下载按钮
+        self.gui.btn_download_log.configure(command=self.gui.download_log)
+
         # 窗口关闭回调
         self.root.protocol("WM_DELETE_WINDOW", self.root.destroy)
+
+    def _get_cal_mgr(self):
+        """获取或创建标定管理器实例"""
+        if self._cal_mgr is None:
+            channel, bitrate, data_bitrate = self.gui.get_channel_info()
+            if not channel or not bitrate or not data_bitrate:
+                self.gui.log("[WARN] 请先选择 CAN 通道、波特率和数据波特率", "ERROR")
+                return None
+            self._cal_mgr = CalibrationManager(
+                channel=self.gui.get_channel_number(),
+                bitrate=bitrate,
+                data_bitrate=data_bitrate,
+                log_callback=self.gui.log,
+            )
+            self._cal_mgr.connect()
+        return self._cal_mgr
+
+    def _on_static_cal(self, is_right_radar):
+        """触发静态标定"""
+        mgr = self._get_cal_mgr()
+        if mgr is None:
+            return
+        mgr.static_calibration(is_right_radar)
+
+    def _on_send_params(self, is_right_radar):
+        """发送标定参数"""
+        mgr = self._get_cal_mgr()
+        if mgr is None:
+            return
+        vehicle_height, x, y, z, yaw, pitch, roll, orientation = self.gui.get_cal_params()
+        mgr.send_params(is_right_radar, vehicle_height, x, y, z, yaw, pitch, roll, orientation)
+
+    def _on_clear_params(self, is_right_radar):
+        """清除标定参数"""
+        mgr = self._get_cal_mgr()
+        if mgr is None:
+            return
+        mgr.clear_params(is_right_radar)
 
     def _on_connect(self):
         channel, bitrate, data_bitrate = self.gui.get_channel_info()
@@ -41,6 +99,13 @@ class Application:
             self.gui.log("[WARN] 请先选择 CAN 通道、波特率和数据波特率", "ERROR")
             return
         
+        self._cal_mgr = CalibrationManager(
+            channel=self.gui.get_channel_number(),
+            bitrate=bitrate,
+            data_bitrate=data_bitrate,
+            log_callback=self.gui.log,
+        )
+        self._cal_mgr.connect()
         self.gui.set_connection_status(True)
         self.gui.log(f"[OK] 已连接 — Channel: {channel}, Bitrate: {bitrate}, Data Bitrate: {data_bitrate}", "OK")
 
