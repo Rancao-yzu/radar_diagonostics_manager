@@ -3,26 +3,43 @@ import sys
 import os
 import time
 import struct
-import threading
+import configparser
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'lib'))
 
 import can
 
 
+# 超时时间定义
 CAL_TIMEOUT_STATIC = 10.0
 CAL_TIMEOUT_PARAM = 3.0
 
-LEFT_STATIC_SEND_ID = 0x61
-LEFT_STATIC_RECV_ID = 0x71
-RIGHT_STATIC_SEND_ID = 0x261
-RIGHT_STATIC_RECV_ID = 0x271
+_CAL_CONFIG_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    'config', 'config_c.ini'
+)
 
-LEFT_PARAM_SEND_ID = 0x60
-LEFT_PARAM_RECV_ID = 0x70
-RIGHT_PARAM_SEND_ID = 0x260
-RIGHT_PARAM_RECV_ID = 0x270
 
+def _load_can_ids():
+    cfg = configparser.ConfigParser()
+    cfg.read(_CAL_CONFIG_PATH, encoding='utf-8')
+    return {
+        'left_static_send':  int(cfg.get('CAN', 'left_static_send_id'), 0),
+        'left_static_recv':  int(cfg.get('CAN', 'left_static_recv_id'), 0),
+        'right_static_send': int(cfg.get('CAN', 'right_static_send_id'), 0),
+        'right_static_recv': int(cfg.get('CAN', 'right_static_recv_id'), 0),
+        'left_param_send':   int(cfg.get('CAN', 'left_param_send_id'), 0),
+        'left_param_recv':   int(cfg.get('CAN', 'left_param_recv_id'), 0),
+        'right_param_send':  int(cfg.get('CAN', 'right_param_send_id'), 0),
+        'right_param_recv':  int(cfg.get('CAN', 'right_param_recv_id'), 0),
+    }
+
+
+# 超时时间定义
+CAL_TIMEOUT_STATIC = 10.0
+CAL_TIMEOUT_PARAM = 3.0
+
+# 参数数据格式：7个float + 1个unsigned char（大端序）
 PARAM_STRUCT = struct.Struct('>fffffffB')
 
 PROCESS_STATUS_MAP = {
@@ -55,19 +72,23 @@ ERROR_CODE_MAP = {
 
 class CalibrationManager:
     def __init__(self, channel, bitrate, data_bitrate, log_callback=None):
-        self.channel = channel
+        """初始化标定管理器"""
+        self.channel = int(channel)
         self.bitrate = int(bitrate)
         self.data_bitrate = int(data_bitrate)
         self.log_callback = log_callback
         self.bus = None
         self._running = False
+        self._can_ids = _load_can_ids()
 
     def _log(self, msg, tag="INFO"):
+        """日志记录器"""
         print(msg)
         if self.log_callback:
             self.log_callback(msg, tag)
 
     def connect(self):
+        """连接CAN总线"""
         self.bus = can.interface.Bus(
             interface="kvaser",
             channel=self.channel,
@@ -78,12 +99,14 @@ class CalibrationManager:
         self._log(f"[CAL] CAN 总线已连接 channel={self.channel} bitrate={self.bitrate} data_bitrate={self.data_bitrate}", "OK")
 
     def disconnect(self):
+        """断开CAN总线"""
         if self.bus:
             self.bus.shutdown()
             self.bus = None
             self._log("[CAL] CAN 总线已断开", "INFO")
 
     def _send_and_wait(self, send_id, send_data, expect_recv_id, expect_data, timeout):
+        """发送CAN消息并等待响应"""
         msg = can.Message(arbitration_id=send_id, data=send_data[:64], is_extended_id=False, is_fd=True, dlc=len(send_data))
         self.bus.send(msg)
         self._log(f"[CAL SEND] ID=0x{send_id:03X} DLC={len(send_data)} Data={[hex(b) for b in send_data]}", "SEND")
@@ -103,8 +126,9 @@ class CalibrationManager:
         return None
 
     def static_calibration(self, is_right_radar):
-        send_id = RIGHT_STATIC_SEND_ID if is_right_radar else LEFT_STATIC_SEND_ID
-        recv_id = RIGHT_STATIC_RECV_ID if is_right_radar else LEFT_STATIC_RECV_ID
+        """静态标定"""
+        send_id = self._can_ids['right_static_send'] if is_right_radar else self._can_ids['left_static_send']
+        recv_id = self._can_ids['right_static_recv'] if is_right_radar else self._can_ids['left_static_recv']
 
         radar_name = "右雷达" if is_right_radar else "左雷达"
         self._log(f"[CAL] 开始{radar_name}静态标定...", "INFO")
@@ -131,6 +155,7 @@ class CalibrationManager:
         return None
 
     def _parse_cal_result(self, data):
+        """解析标定结果数据"""
         if len(data) < 8:
             self._log("[CAL] 标定结果数据长度不足", "ERROR")
             return None
@@ -164,17 +189,67 @@ class CalibrationManager:
 
         return result
 
-    def send_params(self, is_right_radar, vehicle_height,
-                    x_offset, y_offset, z_offset,
-                    yaw_angle, pitch_angle, roll_angle, orientation):
-        send_id = RIGHT_PARAM_SEND_ID if is_right_radar else LEFT_PARAM_SEND_ID
-        recv_id = RIGHT_PARAM_RECV_ID if is_right_radar else LEFT_PARAM_RECV_ID
+    def _clean_val(self, cfg, section, key):
+        val = cfg.get(section, key)
+        for ch in (';', '#'):
+            idx = val.find(ch)
+            if idx != -1:
+                val = val[:idx]
+        return val.strip()
+
+    def _read_cal_params(self, is_right_radar):
+        section = 'RightRadar' if is_right_radar else 'LeftRadar'
         radar_name = "右雷达" if is_right_radar else "左雷达"
 
-        packed = PARAM_STRUCT.pack(vehicle_height,
-                                   x_offset, y_offset, z_offset,
-                                   yaw_angle, pitch_angle, roll_angle,
-                                   orientation)
+        cfg = configparser.ConfigParser()
+        if not os.path.exists(_CAL_CONFIG_PATH):
+            self._log(f"[CAL] 配置文件不存在: {_CAL_CONFIG_PATH}", "ERROR")
+            return None
+
+        cfg.read(_CAL_CONFIG_PATH, encoding='utf-8')
+        if section not in cfg:
+            self._log(f"[CAL] 配置文件中未找到 [{section}] 节", "ERROR")
+            return None
+
+        try:
+            params = {
+                'vehicle_height': float(self._clean_val(cfg, section, 'vehicle_height')),
+                'x_offset':       float(self._clean_val(cfg, section, 'x_offset')),
+                'y_offset':       float(self._clean_val(cfg, section, 'y_offset')),
+                'z_offset':       float(self._clean_val(cfg, section, 'z_offset')),
+                'yaw_angle':      float(self._clean_val(cfg, section, 'yaw_angle')),
+                'pitch_angle':    float(self._clean_val(cfg, section, 'pitch_angle')),
+                'roll_angle':     float(self._clean_val(cfg, section, 'roll_angle')),
+                'orientation':    int(self._clean_val(cfg, section, 'orientation')),
+            }
+        except (configparser.NoOptionError, ValueError) as e:
+            self._log(f"[CAL] 读取{radar_name}标定参数失败: {e}", "ERROR")
+            return None
+
+        self._log(f"[CAL] 从配置文件读取{radar_name}参数: "
+                  f"vh={params['vehicle_height']:.2f} x={params['x_offset']:.2f} "
+                  f"y={params['y_offset']:.2f} z={params['z_offset']:.2f} "
+                  f"yaw={params['yaw_angle']:.2f} pitch={params['pitch_angle']:.2f} "
+                  f"roll={params['roll_angle']:.2f} orient={params['orientation']}", "OK")
+        return params
+
+    def send_params(self, is_right_radar):
+        """下发标定参数"""
+        params = self._read_cal_params(is_right_radar)
+        if params is None:
+            return False
+
+        send_id = self._can_ids['right_param_send'] if is_right_radar else self._can_ids['left_param_send']
+        recv_id = self._can_ids['right_param_recv'] if is_right_radar else self._can_ids['left_param_recv']
+        radar_name = "右雷达" if is_right_radar else "左雷达"
+
+        # 构建参数数据包
+        packed = PARAM_STRUCT.pack(
+            params['vehicle_height'],
+            params['x_offset'], params['y_offset'], params['z_offset'],
+            params['yaw_angle'], params['pitch_angle'], params['roll_angle'],
+            params['orientation'],
+        )
         data = [0x01] + list(packed) + [0x00] * 34
 
         self._log(f"[CAL] 向{radar_name}下发标定参数...", "INFO")
@@ -187,8 +262,9 @@ class CalibrationManager:
         return True
 
     def clear_params(self, is_right_radar):
-        send_id = RIGHT_PARAM_SEND_ID if is_right_radar else LEFT_PARAM_SEND_ID
-        recv_id = RIGHT_PARAM_RECV_ID if is_right_radar else LEFT_PARAM_RECV_ID
+        """清除标定参数"""
+        send_id = self._can_ids['right_param_send'] if is_right_radar else self._can_ids['left_param_send']
+        recv_id = self._can_ids['right_param_recv'] if is_right_radar else self._can_ids['left_param_recv']
         radar_name = "右雷达" if is_right_radar else "左雷达"
 
         self._log(f"[CAL] 清除{radar_name}标定参数...", "INFO")

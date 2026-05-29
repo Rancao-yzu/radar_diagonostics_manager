@@ -83,8 +83,7 @@ class Application:
         mgr = self._get_cal_mgr()
         if mgr is None:
             return
-        vehicle_height, x, y, z, yaw, pitch, roll, orientation = self.gui.get_cal_params()
-        mgr.send_params(is_right_radar, vehicle_height, x, y, z, yaw, pitch, roll, orientation)
+        mgr.send_params(is_right_radar)
 
     def _on_clear_params(self, is_right_radar):
         """清除标定参数"""
