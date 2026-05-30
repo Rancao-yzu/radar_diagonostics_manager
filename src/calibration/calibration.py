@@ -143,7 +143,7 @@ class CalibrationManager:
                 dlc=len(send_data)
             )
             self.bus.send(msg)
-            self._log(f"[CAL SEND] ID=0x{send_id:03X} DLC={len(send_data)} Data={send_data}", "SEND")
+            self._log(f"[SEND] ID=0x{send_id:03X} DLC={len(send_data)} Data={send_data}", "SEND")
 
             deadline = time.time() + timeout
             while time.time() < deadline:
@@ -153,10 +153,10 @@ class CalibrationManager:
                     continue
                 if recv.arbitration_id == expect_recv_id and list(recv.data[:len(expect_data)]) == expect_data:
                     # 检查响应是否匹配
-                    self._log(f"[CAL RECV] ID=0x{recv.arbitration_id:03X} Data={[hex(b) for b in recv.data]}", "RECV")
+                    self._log(f"[RECV] ID=0x{recv.arbitration_id:03X} Data={[hex(b) for b in recv.data]}", "RECV")
                     return recv
 
-            self._log(f"[CAL] 等待响应超时 ID=0x{expect_recv_id:03X}", "ERROR")
+            self._log(f"[ERROR] 等待响应超时 ID=0x{expect_recv_id:03X}", "ERROR")
             return None
         finally:
             if keep_alive_data is not None: # 4 通知后台线程停止
@@ -168,14 +168,14 @@ class CalibrationManager:
         recv_id = self._can_ids['right_static_recv'] if is_right_radar else self._can_ids['left_static_recv']
 
         radar_name = "右雷达" if is_right_radar else "左雷达"
-        self._log(f"[CAL] 开始{radar_name}静态标定...", "INFO")
+        self._log(f"[INFO] 开始{radar_name}静态标定...", "INFO")
 
         resp = self._send_and_wait(send_id, [0x02], recv_id, [0x02, 0x01], CAL_TIMEOUT_PARAM, keep_alive_data=[0x00])
         if resp is None:
-            self._log(f"[CAL] {radar_name}静态标定启动失败", "ERROR")
+            self._log(f"[ERROR] {radar_name}静态标定启动失败", "ERROR")
             return
 
-        self._log(f"[CAL] {radar_name}标定已启动，等待查询结果...", "INFO")
+        self._log(f"[INFO] {radar_name}标定已启动，等待查询结果...", "INFO")
 
         deadline = time.time() + CAL_TIMEOUT_PARAM
         while time.time() < deadline:
@@ -183,23 +183,23 @@ class CalibrationManager:
             recv = self.bus.recv(timeout=min(remaining, 0.1))
             if recv is None:
                 continue
-            self._log(f"[CAL RECV] ID=0x{recv.arbitration_id:03X} Data={[hex(b) for b in recv.data]}", "RECV")
+            self._log(f"[RECV] ID=0x{recv.arbitration_id:03X} Data={[hex(b) for b in recv.data]}", "RECV")
             if recv.arbitration_id == recv_id and len(recv.data) >= 2 and recv.data[0] == 0x04:
                 self._parse_cal_result(recv.data[1:])
                 return
 
-        self._log(f"[CAL] {radar_name}标定结果等待超时", "ERROR")
+        self._log(f"[ERROR] {radar_name}标定结果等待超时", "ERROR")
 
     def _parse_cal_result(self, data):
         """解析标定结果数据"""
         if len(data) < 8:
-            self._log("[CAL] 标定结果数据长度不足", "ERROR")
+            self._log("[ERROR] 标定结果数据长度不足", "ERROR")
             return
 
         cal_result = struct.unpack('>H', data[0:2])[0]   # 校准判定结果 (2字节)
         error_code = struct.unpack('>H', data[2:4])[0]   # 流程运行工况 (2字节)
 
-        self._log(f"[CAL] 标定结果解析:", "OK")
+        self._log(f"[OK] 标定结果解析:", "OK")
         self._log(f"  标定结果: {RESULT_STATUS_MAP.get(cal_result, f'未知({cal_result})')}", "OK")
         self._log(f"  标定状态: {ERROR_CODE_MAP.get(error_code, f'未知({error_code})')}", "OK")
 
@@ -209,12 +209,12 @@ class CalibrationManager:
 
         cfg = configparser.ConfigParser()
         if not os.path.exists(_CAL_CONFIG_PATH):
-            self._log(f"[CAL] 配置文件不存在: {_CAL_CONFIG_PATH}", "ERROR")
+            self._log(f"[ERROR] 配置文件不存在: {_CAL_CONFIG_PATH}", "ERROR")
             return None
 
         cfg.read(_CAL_CONFIG_PATH, encoding='utf-8')
         if section not in cfg:
-            self._log(f"[CAL] 配置文件中未找到 [{section}] 节", "ERROR")
+            self._log(f"[ERROR] 配置文件中未找到 [{section}] 节", "ERROR")
             return None
 
         try:
@@ -228,10 +228,10 @@ class CalibrationManager:
                 'roll_angle':     float(_clean_val(cfg, section, 'roll_angle')),
             }
         except (configparser.NoOptionError, ValueError) as e:
-            self._log(f"[CAL] 读取{radar_name}标定参数失败: {e}", "ERROR")
+            self._log(f"[ERROR] 读取{radar_name}标定参数失败: {e}", "ERROR")
             return None
 
-        self._log(f"[CAL] 从配置文件读取{radar_name}参数: "
+        self._log(f"[OK] 从配置文件读取{radar_name}参数: "
                   f"vh={params['vehicle_height']:.2f} x={params['x_offset']:.2f} "
                   f"y={params['y_offset']:.2f} z={params['z_offset']:.2f} "
                   f"yaw={params['yaw_angle']:.2f} pitch={params['pitch_angle']:.2f} "
@@ -256,13 +256,13 @@ class CalibrationManager:
         )
         data = [0x01] + list(packed) + [0x00] * 35
 
-        self._log(f"[CAL] 向{radar_name}下发标定参数...", "INFO")
+        self._log(f"[INFO] 向{radar_name}下发标定参数...", "INFO")
         resp = self._send_and_wait(send_id, data, recv_id, [0x01, 0x01], CAL_TIMEOUT_PARAM)
         if resp is None:
-            self._log(f"[CAL] {radar_name}参数下发失败", "ERROR")
+            self._log(f"[ERROR] {radar_name}参数下发失败", "ERROR")
             return False
 
-        self._log(f"[CAL] {radar_name}参数下发成功", "OK")
+        self._log(f"[OK] {radar_name}参数下发成功", "OK")
         return True
 
     def clear_params(self, is_right_radar):
@@ -271,11 +271,11 @@ class CalibrationManager:
         recv_id = self._can_ids['right_param_recv'] if is_right_radar else self._can_ids['left_param_recv']
         radar_name = "右雷达" if is_right_radar else "左雷达"
 
-        self._log(f"[CAL] 清除{radar_name}标定参数...", "INFO")
+        self._log(f"[INFO] 清除{radar_name}标定参数...", "INFO")
         resp = self._send_and_wait(send_id, [0x02], recv_id, [0x02, 0x01], CAL_TIMEOUT_PARAM)
         if resp is None:
-            self._log(f"[CAL] {radar_name}参数清除失败", "ERROR")
+            self._log(f"[ERROR] {radar_name}参数清除失败", "ERROR")
             return False
 
-        self._log(f"[CAL] {radar_name}参数清除成功", "OK")
+        self._log(f"[OK] {radar_name}参数清除成功", "OK")
         return True
