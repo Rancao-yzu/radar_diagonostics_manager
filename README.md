@@ -23,6 +23,19 @@ WF_Radar_Diagonostics_manager/
 > 程序启动时 `main.py` 会自动将 `lib/` 加入 `sys.path`。  
 > 已完成src/ota/ota_test.py，用于测试 OTA 升级流程！  
 
-- 其中src/ota/ota_test.py为单独的ota测试程序，不侵入主程序。
-- src_example/为示例代码，不包含在主程序中。
-- src/为主程序源码，包含所有功能模块。
+- 其中`src/ota/ota_test.py`为单独的ota测试程序，不侵入主程序。
+- `src_example/`为示例代码，不包含在主程序中。
+- `src/`为主程序源码，包含所有功能模块。
+
+# CAN 总线架构
+
+`main.py` 的 `Application._on_connect` 是**唯一**创建 `can.Bus` 的地方，所有功能模块共用同一个总线实例。
+
+- `_on_connect` 负责创建 `can.Bus`（含 `can_filters`），存入 `self._bus`
+- 各 Manager 的 `__init__` 接收 `bus` 参数，**不自己创建总线**
+- `_on_close` 负责 `shutdown` 释放
+- 若要扩展新功能模块，只需：
+  1. 在 `_on_connect` 的 `filters` 中追加对应的 CAN ID
+  2. 创建 Manager 时传入同一个 `self._bus` 即可
+
+

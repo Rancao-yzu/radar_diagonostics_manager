@@ -64,13 +64,9 @@ ERROR_CODE_MAP = {
 
 
 class CalibrationManager:
-    def __init__(self, channel, bitrate, data_bitrate, log_callback=None):
-        """初始化标定管理器"""
-        self.channel = int(channel)
-        self.bitrate = int(bitrate)
-        self.data_bitrate = int(data_bitrate)
+    def __init__(self, bus, log_callback=None):
+        self.bus = bus
         self.log_callback = log_callback
-        self.bus = None
         self._running = False
         self._can_ids = _load_can_ids()
 
@@ -79,32 +75,6 @@ class CalibrationManager:
         print(msg)
         if self.log_callback:
             self.log_callback(msg, tag)
-
-    def connect(self):
-        """连接CAN总线"""
-        ids = self._can_ids
-        filters = [
-            {"can_id": ids['left_static_recv'], "can_mask": 0x7FF, "extended": False},
-            {"can_id": ids['right_static_recv'], "can_mask": 0x7FF, "extended": False},
-            {"can_id": ids['left_param_recv'], "can_mask": 0x7FF, "extended": False},
-            {"can_id": ids['right_param_recv'], "can_mask": 0x7FF, "extended": False},
-        ]
-        self.bus = can.interface.Bus(
-            interface="kvaser",
-            channel=self.channel,
-            bitrate=self.bitrate,
-            data_bitrate=self.data_bitrate,
-            fd=True,
-            can_filters=filters,
-        )
-        self._log(f"[CAL] CAN 总线已连接 channel={self.channel} bitrate={self.bitrate} data_bitrate={self.data_bitrate}", "OK")
-
-    def disconnect(self):
-        """断开CAN总线"""
-        if self.bus:
-            self.bus.shutdown()
-            self.bus = None
-            self._log("[CAL] CAN 总线已断开", "INFO")
 
     def _send_and_wait(self, send_id, send_data, expect_recv_id, expect_data, timeout, keep_alive_data=None):
         """
@@ -173,6 +143,7 @@ class CalibrationManager:
         resp = self._send_and_wait(send_id, [0x02], recv_id, [0x02, 0x01], CAL_TIMEOUT_PARAM, keep_alive_data=[0x00])
         if resp is None:
             self._log(f"[ERROR] {radar_name}静态标定启动失败", "ERROR")
+            self._log("", "INFO")
             return
 
         self._log(f"[INFO] {radar_name}标定已启动，等待查询结果...", "INFO")
@@ -186,9 +157,11 @@ class CalibrationManager:
             self._log(f"[RECV] ID=0x{recv.arbitration_id:03X} Data={[hex(b) for b in recv.data]}", "RECV")
             if recv.arbitration_id == recv_id and len(recv.data) >= 2 and recv.data[0] == 0x04:
                 self._parse_cal_result(recv.data[1:])
+                self._log("", "INFO")
                 return
 
         self._log(f"[ERROR] {radar_name}标定结果等待超时", "ERROR")
+        self._log("", "INFO")
 
     def _parse_cal_result(self, data):
         """解析标定结果数据"""
@@ -242,6 +215,7 @@ class CalibrationManager:
         """下发标定参数"""
         params = self._read_cal_params(is_right_radar)
         if params is None:
+            self._log("", "INFO")
             return False
 
         send_id = self._can_ids['right_param_send'] if is_right_radar else self._can_ids['left_param_send']
@@ -260,9 +234,11 @@ class CalibrationManager:
         resp = self._send_and_wait(send_id, data, recv_id, [0x01, 0x01], CAL_TIMEOUT_PARAM)
         if resp is None:
             self._log(f"[ERROR] {radar_name}参数下发失败", "ERROR")
+            self._log("", "INFO")
             return False
 
         self._log(f"[OK] {radar_name}参数下发成功", "OK")
+        self._log("", "INFO")
         return True
 
     def clear_params(self, is_right_radar):
@@ -275,7 +251,9 @@ class CalibrationManager:
         resp = self._send_and_wait(send_id, [0x02], recv_id, [0x02, 0x01], CAL_TIMEOUT_PARAM)
         if resp is None:
             self._log(f"[ERROR] {radar_name}参数清除失败", "ERROR")
+            self._log("", "INFO")
             return False
 
         self._log(f"[OK] {radar_name}参数清除成功", "OK")
+        self._log("", "INFO")
         return True

@@ -10,7 +10,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from gui_main import RadarDiagnosticsGUI
 from can_config import check_can_interfaces
-from calibration import CalibrationManager
+from calibration import CalibrationManager, _load_can_ids
+import can
 
 class Application:
     """应用程序主类：创建 GUI 实例，绑定按钮事件"""
@@ -18,6 +19,7 @@ class Application:
     def __init__(self):
         self.root = tk.Tk()
         self.gui = RadarDiagnosticsGUI(self.root)
+        self._bus = None
         self._cal_mgr = None
 
         self._bind_events()
@@ -45,22 +47,14 @@ class Application:
         self.gui.btn_download_log.configure(command=self.gui.download_log)
 
         # 窗口关闭回调
-        self.root.protocol("WM_DELETE_WINDOW", self.root.destroy)
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _get_cal_mgr(self):
-        """获取或创建标定管理器实例"""
         if self._cal_mgr is None:
-            channel, bitrate, data_bitrate = self.gui.get_channel_info()
-            if not channel or not bitrate or not data_bitrate:
-                self.gui.log("[WARN] 请先选择 CAN 通道、波特率和数据波特率", "ERROR")
+            if self._bus is None:
+                self.gui.log("[WARN] 请先点击连接按钮", "ERROR")
                 return None
-            self._cal_mgr = CalibrationManager(
-                channel=self.gui.get_channel_number(),
-                bitrate=bitrate,
-                data_bitrate=data_bitrate,
-                log_callback=self.gui.log,
-            )
-            self._cal_mgr.connect()
+            self._cal_mgr = CalibrationManager(self._bus, log_callback=self.gui.log)
         return self._cal_mgr
 
     def _cal_action(self, target, *args):
@@ -98,18 +92,36 @@ class Application:
             self.gui.log("[WARN] 请先选择 CAN 通道、波特率和数据波特率", "ERROR")
             return
         
-        if self._cal_mgr is not None:
-            self._cal_mgr.disconnect()
+        if self._bus is not None:
+            self._bus.shutdown()
+            self._bus = None
+            self.gui.log("[INFO] CAN 总线已断开", "INFO")
         
-        self._cal_mgr = CalibrationManager(
+        ids = _load_can_ids()
+        filters = [
+            {"can_id": ids['left_static_recv'], "can_mask": 0x7FF, "extended": False},
+            {"can_id": ids['right_static_recv'], "can_mask": 0x7FF, "extended": False},
+            {"can_id": ids['left_param_recv'], "can_mask": 0x7FF, "extended": False},
+            {"can_id": ids['right_param_recv'], "can_mask": 0x7FF, "extended": False},
+        ]
+        self.gui.log(f"[INFO] CAN 总线过滤器: {filters}", "INFO")
+        
+        self._bus = can.interface.Bus(
+            interface="kvaser",
             channel=self.gui.get_channel_number(),
-            bitrate=bitrate,
-            data_bitrate=data_bitrate,
-            log_callback=self.gui.log,
+            bitrate=int(bitrate),
+            data_bitrate=int(data_bitrate),
+            fd=True,
+            can_filters=filters,
         )
-        self._cal_mgr.connect()
+        self._cal_mgr = None
         self.gui.set_connection_status(True)
         self.gui.log(f"[OK] 已连接 — Channel: {channel}, Bitrate: {bitrate}, Data Bitrate: {data_bitrate}", "OK")
+
+    def _on_close(self):
+        if self._bus is not None:
+            self._bus.shutdown()
+        self.root.destroy()
 
     def _refresh_channels(self):
         """扫描可用 CAN 通道，更新下拉列表，完成后恢复鼠标样式"""
