@@ -61,8 +61,8 @@ class Application:
         """执行标定操作，禁用按钮，完成后启用"""
         self.gui._set_cal_buttons_state(tk.DISABLED)
         threading.Thread(target=target, args=args, daemon=True).start()
-        # 等待标定操作完成,5000ms 后启用按钮状态
-        self.root.after(5000, lambda: self.gui._set_cal_buttons_state(tk.NORMAL))
+        # 等待标定操作完成,1500ms 后启用按钮状态
+        self.root.after(1500, lambda: self.gui._set_cal_buttons_state(tk.NORMAL))
 
     def _on_static_cal(self, is_right_radar):
         """触发静态标定"""
