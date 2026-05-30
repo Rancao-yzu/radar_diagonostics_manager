@@ -92,10 +92,14 @@ class Application:
         mgr.clear_params(is_right_radar)
 
     def _on_connect(self):
+        """连接CAN 通道 按钮的实例"""
         channel, bitrate, data_bitrate = self.gui.get_channel_info()
         if not channel or not bitrate or not data_bitrate:
             self.gui.log("[WARN] 请先选择 CAN 通道、波特率和数据波特率", "ERROR")
             return
+        
+        if self._cal_mgr is not None:
+            self._cal_mgr.disconnect()
         
         self._cal_mgr = CalibrationManager(
             channel=self.gui.get_channel_number(),
