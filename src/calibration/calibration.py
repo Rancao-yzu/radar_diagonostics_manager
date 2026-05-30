@@ -89,12 +89,20 @@ class CalibrationManager:
 
     def connect(self):
         """连接CAN总线"""
+        ids = self._can_ids
+        filters = [
+            {"can_id": ids['left_static_recv'], "can_mask": 0x7FF, "extended": False},
+            {"can_id": ids['right_static_recv'], "can_mask": 0x7FF, "extended": False},
+            {"can_id": ids['left_param_recv'], "can_mask": 0x7FF, "extended": False},
+            {"can_id": ids['right_param_recv'], "can_mask": 0x7FF, "extended": False},
+        ]
         self.bus = can.interface.Bus(
             interface="kvaser",
             channel=self.channel,
             bitrate=self.bitrate,
             data_bitrate=self.data_bitrate,
             fd=True,
+            can_filters=filters,
         )
         self._log(f"[CAL] CAN 总线已连接 channel={self.channel} bitrate={self.bitrate} data_bitrate={self.data_bitrate}", "OK")
 
