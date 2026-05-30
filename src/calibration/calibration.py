@@ -9,8 +9,7 @@ import can
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'lib'))
 
 # 超时时间定义
-CAL_TIMEOUT_STATIC = 10.0
-CAL_TIMEOUT_PARAM = 3.0
+CAL_TIMEOUT_PARAM = 3.5
 
 # CAN 配置文件路径
 _CAL_CONFIG_PATH = os.path.join(
@@ -44,29 +43,22 @@ def _clean_val(cfg, section, key):
 # 参数数据格式：7个float（大端序）
 PARAM_STRUCT = struct.Struct('>fffffff')
 
-PROCESS_STATUS_MAP = {
-    0: "进程未激活",
-    1: "运行中",
-    2: "flash写入失败",
-    3: "正常完成",
-    4: "进程中断",
-}
-
 RESULT_STATUS_MAP = {
-    0: "无校准结果",
-    1: "结果超限",
-    2: "结果合格",
-    3: "边界条件满足",
+    1: "结果合格",
+    2: "结果不合格",
+    3: "标定进行中",
 }
 
 ERROR_CODE_MAP = {
-    1: "开始",
-    2: "车速超限",
-    3: "角度过大",
-    4: "角度过小",
-    5: "目标数异常",
-    6: "超时",
-    7: "执行成功",
+    0: "标定进行中无错误码",
+    1: "标定未成功触发",
+    2: "flash存储失败",
+    3: "车速超限",
+    4: "角度过大",
+    5: "角度过小",
+    6: "目标数异常",
+    7: "超时",
+    8: "执行成功",
 }
 
 
@@ -123,7 +115,7 @@ class CalibrationManager:
             dlc=len(send_data)
         )
         self.bus.send(msg)
-        self._log(f"[CAL SEND] ID=0x{send_id:03X} DLC={len(send_data)} Data={[hex(b) for b in send_data]}", "SEND")
+        self._log(f"[CAL SEND] ID=0x{send_id:03X} DLC={len(send_data)} Data={send_data}", "SEND")
 
         deadline = time.time() + timeout
         while time.time() < deadline:
@@ -139,6 +131,46 @@ class CalibrationManager:
         self._log(f"[CAL] 等待响应超时 ID=0x{expect_recv_id:03X}", "ERROR")
         return None
 
+    def _poll_until_done(self, send_id, recv_id, expect_data, poll_interval=0.5, timeout=30.0):
+        """
+        持续发送轮询帧 0x00，直到 ECU 返回匹配的响应。
+        send_id       — 发送 CAN ID（如 0x61）
+        recv_id       — 接收 CAN ID（如 0x71）
+        expect_data   — 完成标志数据，匹配 recv.data 前 N 字节（如 [0x02, 0x01]）
+        poll_interval — 轮询间隔（秒）
+        timeout       — 总超时（秒）
+
+        """
+        deadline = time.time() + timeout
+        last_send = 0
+
+        while time.time() < deadline:
+            now = time.time()
+            if now - last_send >= poll_interval:
+                msg = can.Message(
+                    arbitration_id=send_id,
+                    data=[0x00],
+                    is_extended_id=False,
+                    is_fd=True,
+                    dlc=1,
+                )
+                self.bus.send(msg)
+                self._log(f"[CAL SEND] ID=0x{send_id:03X} DLC=1 Data=['0x0'] (poll)", "SEND")
+                last_send = now
+
+            remaining = deadline - time.time()
+            recv = self.bus.recv(timeout=min(remaining, 0.1))
+            if recv is None:
+                continue
+            self._log(f"[CAL RECV] ID=0x{recv.arbitration_id:03X} Data={[hex(b) for b in recv.data]}", "RECV")
+
+            if recv.arbitration_id == recv_id and list(recv.data[:len(expect_data)]) == expect_data:
+                self._log(f"[CAL] 轮询终止 — 收到完成帧 Data={[hex(b) for b in expect_data]}", "OK")
+                return recv
+
+        self._log(f"[CAL] 轮询超时 — 未收到完成帧 Data={[hex(b) for b in expect_data]}", "ERROR")
+        return None
+
     def static_calibration(self, is_right_radar):
         """静态标定"""
         send_id = self._can_ids['right_static_send'] if is_right_radar else self._can_ids['left_static_send']
@@ -147,58 +179,38 @@ class CalibrationManager:
         radar_name = "右雷达" if is_right_radar else "左雷达"
         self._log(f"[CAL] 开始{radar_name}静态标定...", "INFO")
 
-        resp = self._send_and_wait(send_id, [0x02], recv_id, [0x02, 0x01], CAL_TIMEOUT_STATIC)
+        resp = self._send_and_wait(send_id, [0x02], recv_id, [0x02, 0x01], CAL_TIMEOUT_PARAM)
         if resp is None:
             self._log(f"[CAL] {radar_name}静态标定启动失败", "ERROR")
-            return None
+            return
 
-        self._log(f"[CAL] {radar_name}标定已启动，等待标定结果...", "INFO")
+        self._log(f"[CAL] {radar_name}标定已启动，轮询等待完成...", "INFO")
 
-        deadline = time.time() + CAL_TIMEOUT_STATIC
+        deadline = time.time() + CAL_TIMEOUT_PARAM
         while time.time() < deadline:
             remaining = deadline - time.time()
             recv = self.bus.recv(timeout=min(remaining, 0.1))
             if recv is None:
                 continue
+            self._log(f"[CAL RECV] ID=0x{recv.arbitration_id:03X} Data={[hex(b) for b in recv.data]}", "RECV")
             if recv.arbitration_id == recv_id and len(recv.data) >= 2 and recv.data[0] == 0x04:
-                self._log(f"[CAL RECV] ID=0x{recv.arbitration_id:03X} Data={[hex(b) for b in recv.data]}", "RECV")
-                result = self._parse_cal_result(recv.data[1:])
-                return result
+                self._parse_cal_result(recv.data[1:])
+                return
 
         self._log(f"[CAL] {radar_name}标定结果等待超时", "ERROR")
-        return None
 
     def _parse_cal_result(self, data):
         """解析标定结果数据"""
-        if len(data) < 20:
+        if len(data) < 8:
             self._log("[CAL] 标定结果数据长度不足", "ERROR")
-            return None
+            return
 
-        cal_result = struct.unpack('>I', data[0:4])[0]
-        process_status = struct.unpack('>I', data[4:8])[0]
-        horizontal_raw = struct.unpack('>f', data[8:12])[0]
-        vertical_raw = struct.unpack('>f', data[12:16])[0]
-        error_code = struct.unpack('>I', data[16:20])[0]
-
-        result = {
-            "process_status": process_status,
-            "process_status_text": PROCESS_STATUS_MAP.get(process_status, f"未知({process_status})"),
-            "cal_result": cal_result,
-            "cal_result_text": RESULT_STATUS_MAP.get(cal_result, f"未知({cal_result})"),
-            "horizontal_angle": horizontal_raw,
-            "vertical_angle": vertical_raw,
-            "error_code": error_code,
-            "error_code_text": ERROR_CODE_MAP.get(error_code, f"未知({error_code})"),
-        }
+        cal_result = struct.unpack('>H', data[0:2])[0]   # 校准判定结果 (2字节)
+        error_code = struct.unpack('>H', data[2:4])[0]   # 流程运行工况 (2字节)
 
         self._log(f"[CAL] 标定结果解析:", "OK")
-        self._log(f"  标定结果: {result['cal_result_text']}", "OK")
-        self._log(f"  进程状态: {result['process_status_text']}", "OK")
-        self._log(f"  水平偏差角度: {horizontal_raw:.2f}°", "OK")
-        self._log(f"  垂直偏差角度: {vertical_raw:.2f}°", "OK")
-        self._log(f"  标定状态: {result['error_code_text']}", "OK")
-
-        return result
+        self._log(f"  标定结果: {RESULT_STATUS_MAP.get(cal_result, f'未知({cal_result})')}", "OK")
+        self._log(f"  标定状态: {ERROR_CODE_MAP.get(error_code, f'未知({error_code})')}", "OK")
 
     def _read_cal_params(self, is_right_radar):
         section = 'RightRadar' if is_right_radar else 'LeftRadar'
