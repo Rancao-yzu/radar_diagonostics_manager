@@ -4,6 +4,7 @@ import os
 import time
 import struct
 import configparser
+import threading
 import can
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'lib'))
@@ -105,71 +106,61 @@ class CalibrationManager:
             self.bus = None
             self._log("[CAL] CAN 总线已断开", "INFO")
 
-    def _send_and_wait(self, send_id, send_data, expect_recv_id, expect_data, timeout):
-        """发送CAN消息并等待响应"""
-        msg = can.Message(
-            arbitration_id=send_id, 
-            data=send_data[:64], 
-            is_extended_id=False, 
-            is_fd=True, 
-            dlc=len(send_data)
-        )
-        self.bus.send(msg)
-        self._log(f"[CAL SEND] ID=0x{send_id:03X} DLC={len(send_data)} Data={send_data}", "SEND")
-
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            remaining = deadline - time.time()
-            recv = self.bus.recv(timeout=min(remaining, 0.1))
-            if recv is None:
-                continue
-
-            if recv.arbitration_id == expect_recv_id and list(recv.data[:len(expect_data)]) == expect_data:
-                self._log(f"[CAL RECV] ID=0x{recv.arbitration_id:03X} Data={[hex(b) for b in recv.data]}", "RECV")
-                return recv
-
-        self._log(f"[CAL] 等待响应超时 ID=0x{expect_recv_id:03X}", "ERROR")
-        return None
-
-    def _poll_until_done(self, send_id, recv_id, expect_data, poll_interval=0.5, timeout=30.0):
+    def _send_and_wait(self, send_id, send_data, expect_recv_id, expect_data, timeout, keep_alive_data=None):
         """
-        持续发送轮询帧 0x00，直到 ECU 返回匹配的响应。
-        send_id       — 发送 CAN ID（如 0x61）
-        recv_id       — 接收 CAN ID（如 0x71）
-        expect_data   — 完成标志数据，匹配 recv.data 前 N 字节（如 [0x02, 0x01]）
-        poll_interval — 轮询间隔（秒）
-        timeout       — 总超时（秒）
-
+        发送CAN消息并等待响应
+            
+        Args:
+            send_id: 发送消息的CAN ID
+            send_data: 待发送的数据（bytes或list，最多64字节）
+            expect_recv_id: 期望接收的响应CAN ID
+            expect_data: 期望响应的数据
+            timeout: 等待响应的超时时间（秒）
+            keep_alive_data: 可选，后台轮询发送的保活数据，每0.5秒发送一次
         """
-        deadline = time.time() + timeout
-        last_send = 0
+        stop_poll = threading.Event() # 1 创建事件，初始False
 
-        while time.time() < deadline:
-            now = time.time()
-            if now - last_send >= poll_interval:
+        def _bg_poll():
+            # 2 后台轮询线程
+            while not stop_poll.is_set():# 2 检查事件是否为True
                 msg = can.Message(
-                    arbitration_id=send_id,
-                    data=[0x00],
-                    is_extended_id=False,
-                    is_fd=True,
-                    dlc=1,
+                    arbitration_id=send_id, data=keep_alive_data,
+                    is_extended_id=False, is_fd=True, dlc=len(keep_alive_data),
                 )
                 self.bus.send(msg)
-                self._log(f"[CAL SEND] ID=0x{send_id:03X} DLC=1 Data=['0x0'] (poll)", "SEND")
-                last_send = now
+                stop_poll.wait(0.5)# 3 等待最多0.5秒，如果事件被set则立即退出
 
-            remaining = deadline - time.time()
-            recv = self.bus.recv(timeout=min(remaining, 0.1))
-            if recv is None:
-                continue
-            self._log(f"[CAL RECV] ID=0x{recv.arbitration_id:03X} Data={[hex(b) for b in recv.data]}", "RECV")
+        if keep_alive_data is not None:
+            threading.Thread(target=_bg_poll, daemon=True).start()
+            self._log(f"[INFO] 启台轮询 0x{send_id:03X} Data={keep_alive_data}", "INFO")
 
-            if recv.arbitration_id == recv_id and list(recv.data[:len(expect_data)]) == expect_data:
-                self._log(f"[CAL] 轮询终止 — 收到完成帧 Data={[hex(b) for b in expect_data]}", "OK")
-                return recv
+        try:
+            msg = can.Message(
+                arbitration_id=send_id, 
+                data=send_data[:64], 
+                is_extended_id=False, 
+                is_fd=True, 
+                dlc=len(send_data)
+            )
+            self.bus.send(msg)
+            self._log(f"[CAL SEND] ID=0x{send_id:03X} DLC={len(send_data)} Data={send_data}", "SEND")
 
-        self._log(f"[CAL] 轮询超时 — 未收到完成帧 Data={[hex(b) for b in expect_data]}", "ERROR")
-        return None
+            deadline = time.time() + timeout
+            while time.time() < deadline:
+                remaining = deadline - time.time()
+                recv = self.bus.recv(timeout=min(remaining, 0.1))
+                if recv is None:
+                    continue
+                if recv.arbitration_id == expect_recv_id and list(recv.data[:len(expect_data)]) == expect_data:
+                    # 检查响应是否匹配
+                    self._log(f"[CAL RECV] ID=0x{recv.arbitration_id:03X} Data={[hex(b) for b in recv.data]}", "RECV")
+                    return recv
+
+            self._log(f"[CAL] 等待响应超时 ID=0x{expect_recv_id:03X}", "ERROR")
+            return None
+        finally:
+            if keep_alive_data is not None: # 4 通知后台线程停止
+                stop_poll.set()
 
     def static_calibration(self, is_right_radar):
         """静态标定"""
@@ -179,12 +170,12 @@ class CalibrationManager:
         radar_name = "右雷达" if is_right_radar else "左雷达"
         self._log(f"[CAL] 开始{radar_name}静态标定...", "INFO")
 
-        resp = self._send_and_wait(send_id, [0x02], recv_id, [0x02, 0x01], CAL_TIMEOUT_PARAM)
+        resp = self._send_and_wait(send_id, [0x02], recv_id, [0x02, 0x01], CAL_TIMEOUT_PARAM, keep_alive_data=[0x00])
         if resp is None:
             self._log(f"[CAL] {radar_name}静态标定启动失败", "ERROR")
             return
 
-        self._log(f"[CAL] {radar_name}标定已启动，轮询等待完成...", "INFO")
+        self._log(f"[CAL] {radar_name}标定已启动，等待查询结果...", "INFO")
 
         deadline = time.time() + CAL_TIMEOUT_PARAM
         while time.time() < deadline:
