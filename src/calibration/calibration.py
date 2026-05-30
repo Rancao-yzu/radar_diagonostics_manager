@@ -165,7 +165,7 @@ class CalibrationManager:
 
     def _parse_cal_result(self, data):
         """解析标定结果数据"""
-        if len(data) < 8:
+        if len(data) < 4:
             self._log("[ERROR] 标定结果数据长度不足", "ERROR")
             return
 
