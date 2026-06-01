@@ -394,8 +394,10 @@ class RadarDiagnosticsGUI:
 
     def log(self, message, tag="INFO"):
         """将日志消息添加到文本框中"""
+        from datetime import datetime
+        ts = datetime.now().strftime("%H:%M:%S")
         self.log_text.configure(state=tk.NORMAL)
-        self.log_text.insert(tk.END, message + "\n", tag)
+        self.log_text.insert(tk.END, f"[{ts}]-- {message}\n", tag)
         self.log_text.see(tk.END)
         self.log_text.configure(state=tk.DISABLED)
 
