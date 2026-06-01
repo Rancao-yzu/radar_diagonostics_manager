@@ -42,17 +42,15 @@ class TimeSyncManager:
         if self.log_callback:
             self.log_callback(msg, tag)
 
-    def build_and_send(self, msg_type=0x01):
+    def build_and_send(self, msg_type=0x20):
         """取当前系统时间，按协议打包 16 字节 CANFD 扩展帧并通过共享总线发送"""
-        # 获取当前系统时间，拆分为秒 + 纳秒
         now = time.time()
         seconds = int(now)
         nanos = int((now - seconds) * 1e9)
 
-        # 初始化 16 字节缓冲区，填充各协议字段
         raw = bytearray(16)
 
-        # Byte0   — 消息类型（1 字节，u8）
+        # Byte0   — 消息类型（1 字节，u8），固定 0x20
         raw[0] = msg_type
 
         # Byte3   — 帧序列号（1 字节，u8），每发一帧自增，0~255 循环
@@ -70,9 +68,9 @@ class TimeSyncManager:
         # Byte13~15 — 协议保留位（3 字节，填充 0x00）
         raw[13:16] = b'\x00' * 3
 
-        # 计算 CRC-16 (Byte1~2)，覆盖范围：Byte0 + Byte3~15（不含 CRC 自身）
-        cover_data = raw[0:1] + raw[3:16]
-        crc = _crc16_ccitt(bytes(cover_data))
+        # 计算 CRC-16 (Byte1~2)，整帧 16 字节全部参与运算
+        # raw 中 Byte1~2 此时为 0x00，CRC 计算后再填充
+        crc = _crc16_ccitt(bytes(raw))
         struct.pack_into('>H', raw, 1, crc)
 
         self._log(f"[SYNC] 发送时间同步帧 seq={self._seq_counter} "
