@@ -6,9 +6,6 @@ import struct
 import configparser
 import threading
 import can
-
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'lib'))
-
 # 超时时间定义
 CAL_TIMEOUT_PARAM = 3.5
 

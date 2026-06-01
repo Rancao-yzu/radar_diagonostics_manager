@@ -6,7 +6,12 @@ import threading
 import tkinter as tk
 
 # 将 lib/ 目录加入搜索路径，确保使用项目内置的 isotp/uds 库
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'lib'))
+# 开发环境和 PyInstaller 打包后都能正确找到 lib/ 路径
+if getattr(sys, 'frozen', False):
+    _BASE_DIR = sys._MEIPASS
+else:
+    _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(_BASE_DIR, 'lib'))
 
 from gui_main import RadarDiagnosticsGUI
 from can_config import check_can_interfaces
