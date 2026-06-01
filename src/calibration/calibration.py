@@ -148,17 +148,25 @@ class CalibrationManager:
 
         self._log(f"[INFO] {radar_name}标定已启动，等待查询结果...", "INFO")
 
-        deadline = time.time() + CAL_TIMEOUT_PARAM
+        deadline = time.time() + CAL_TIMEOUT_PARAM * 10
         while time.time() < deadline:
             remaining = deadline - time.time()
             recv = self.bus.recv(timeout=min(remaining, 0.1))
             if recv is None:
                 continue
+
             self._log(f"[RECV] ID=0x{recv.arbitration_id:03X} Data={[hex(b) for b in recv.data]}", "RECV")
-            if recv.arbitration_id == recv_id and len(recv.data) >= 2 and recv.data[0] == 0x04:
-                self._parse_cal_result(recv.data[1:])
-                self._log("", "INFO")
-                return
+
+            if recv.arbitration_id != recv_id or len(recv.data) < 3 or recv.data[0] != 0x04:
+                continue
+
+            if recv.data[2] == 0x03:
+                self._log(f"[INFO] {radar_name}标定进行中，持续等待结果...", "INFO")
+                continue
+
+            self._parse_cal_result(recv.data[1:])
+            self._log("", "INFO")
+            return
 
         self._log(f"[ERROR] {radar_name}标定结果等待超时", "ERROR")
         self._log("", "INFO")
