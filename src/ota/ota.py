@@ -8,6 +8,7 @@ from uds import UdsMessage, IsoServices, Uds
 import time
 import threading
 import zlib
+from intelhex import IntelHex
 
 
 # ISO-TP 参数配置
@@ -56,14 +57,14 @@ def uds_send(canUds, service, params, confirm=None, timeout=2.0):
 def step_a1_extended_session(canUds):
     """A1: 切换到扩展会话"""
     uds_send(canUds, IsoServices.DiagnosticSessionControl, [0x03],
-             confirm=[0x50, 0x03], timeout=2.0)
+             confirm=[ 0x03], timeout=2.0)
     print("[A1] 扩展会话切换成功")
 
 
 def step_a2_ecu_reset(canUds):
     """A2: ECU 复位"""
     uds_send(canUds, IsoServices.EcuReset, [0x01],
-             confirm=[0x51, 0x01], timeout=2.0)
+             confirm=[ 0x01], timeout=2.0)
     print("[A2] ECU 复位已发送")
 
 
@@ -97,7 +98,7 @@ def step_c_erase(canUds, address, length):
     len_bytes = list(length.to_bytes(4, 'big'))
     params = [0x01, 0xFF, 0x00, 0x00] + addr_bytes + len_bytes
     uds_send(canUds, IsoServices.RoutineControl, params,
-             confirm=[0x71, 0x01, 0xFF, 0x00], timeout=30.0)
+             confirm=[ 0x01, 0xFF, 0x00], timeout=30.0)
     print(f"[C] 擦除完成 address=0x{address:08X} length={length}")
 
 
@@ -107,7 +108,7 @@ def step_d1_request_download(canUds, address, length):
     len_bytes = list(length.to_bytes(4, 'big'))
     params = [0x00, 0x44] + addr_bytes + len_bytes
     resp = uds_send(canUds, IsoServices.RequestDownload, params,
-                    confirm=[0x74], timeout=5.0)
+                    confirm=[], timeout=5.0)
     max_block = (resp.frame[2] << 8) | resp.frame[3]
     print(f"[D1] 请求下载成功 MaxBlock={max_block}")
     return max_block
@@ -123,7 +124,7 @@ def step_d2_transfer_data(canUds, file_data, chunk_size):
         msg = UdsMessage()
         msg.create(IsoServices.TransferData, [sn] + list(block))
         uds_send(canUds, IsoServices.TransferData, [sn] + list(block),
-                 confirm=[0x76, sn], timeout=5.0)
+                 confirm=[ sn], timeout=5.0)
         block_count += 1
         if block_count % 10 == 0 or offset + chunk_size >= total_len:
             print(f"[D2] 传输进度: {min(offset + chunk_size, total_len)}/{total_len}")
@@ -133,7 +134,7 @@ def step_d2_transfer_data(canUds, file_data, chunk_size):
 def step_d3_transfer_exit(canUds):
     """D3: 传输结束"""
     uds_send(canUds, IsoServices.RequestTransferExit, [],
-             confirm=[0x77], timeout=5.0)
+             confirm=[], timeout=5.0)
     print("[D3] 传输结束")
 
 
@@ -143,21 +144,21 @@ def step_e1_crc32_check(canUds, file_data):
     crc_bytes = list(crc.to_bytes(4, 'big'))
     params = [0x01, 0x02, 0x12] + crc_bytes
     uds_send(canUds, IsoServices.RoutineControl, params,
-             confirm=[0x71, 0x01, 0x02, 0x12], timeout=30.0)
+             confirm=[ 0x01, 0x02, 0x12], timeout=30.0)
     print(f"[E1] CRC32 校验通过 crc=0x{crc:08X}")
 
 
 def step_e2_dependency_check(canUds):
     """E2: 依赖检查"""
     uds_send(canUds, IsoServices.RoutineControl, [0x01, 0x02, 0x05],
-             confirm=[0x71, 0x01, 0x02, 0x05], timeout=10.0)
+             confirm=[ 0x01, 0x02, 0x05], timeout=10.0)
     print("[E2] 依赖检查通过")
 
 
 def step_e3_ecu_reset(canUds):
     """E3: ECU 复位，启动新固件"""
     uds_send(canUds, IsoServices.EcuReset, [0x01],
-             confirm=[0x51, 0x01], timeout=2.0)
+             confirm=[ 0x01], timeout=2.0)
     print("[E3] ECU 复位已发送，新固件即将启动")
 
 
@@ -181,6 +182,22 @@ def main():
         canTp.start()
 
         canUds = Uds(canTp)
+
+        with open(HEX_FILE_PATH, "rb") as f:
+            file_data = f.read()
+        flash_size = len(file_data)
+        #读取Hex文件
+        ihObj = IntelHex(HEX_FILE_PATH)
+        segments = ihObj.segments()
+
+        file_size = segments[0][1] - segments[0][0]
+        file_data =  bytes(ihObj.tobinarray(start=segments[0][0], end=segments[0][1] - 1))
+        start_address = segments[0][0]
+        #文件大小
+        file_size_bytes = file_size.to_bytes(4, byteorder='big')
+        #起始地址
+        start_address_bytes = start_address.to_bytes(4, byteorder='big')
+
 
         # ---- A: 进入 PFBoot OTA 模式 ----
         step_a1_extended_session(canUds)
@@ -206,11 +223,7 @@ def main():
         step_c_erase(canUds, FLASH_START_ADDR, FLASH_ERASE_SIZE)
 
         # ---- D: 下载与传输 ----
-        with open(HEX_FILE_PATH, "rb") as f:
-            file_data = f.read()
-        flash_size = len(file_data)
-
-        max_block = step_d1_request_download(canUds, FLASH_START_ADDR, flash_size)
+        max_block = step_d1_request_download(canUds, start_address_bytes, file_size_bytes)
 
         # 根据 MaxBlock 使用合适的块大小（留出序列号+服务ID的头部空间）
         chunk_size = min(max_block - 2, 4094)
