@@ -228,13 +228,18 @@ class RadarDiagnosticsGUI:
         static_inner = tk.Frame(section_static, bg=BG_CARD)
         static_inner.pack(fill=tk.X, padx=CARD_PAD[0], pady=CARD_PAD[1])
 
-        self.btn_static_left = _FlatButton(static_inner, text="左雷达静态标定", bg=ORANGE_PRIMARY,
-                                           hover=ORANGE_ACCENT, width=140, height=32)
-        self.btn_static_left.pack(side=tk.LEFT, padx=(0, 12))
-
-        self.btn_static_right = _FlatButton(static_inner, text="右雷达静态标定", bg=ORANGE_PRIMARY,
-                                            hover=ORANGE_ACCENT, width=140, height=32)
-        self.btn_static_right.pack(side=tk.LEFT)
+        self.btn_static_1 = _FlatButton(static_inner, text="左前雷达静态标定", bg=ORANGE_PRIMARY,
+                                        hover=ORANGE_ACCENT, width=140, height=32)
+        self.btn_static_1.pack(side=tk.LEFT, padx=(0, 8))
+        self.btn_static_2 = _FlatButton(static_inner, text="右前雷达静态标定", bg=ORANGE_PRIMARY,
+                                        hover=ORANGE_ACCENT, width=140, height=32)
+        self.btn_static_2.pack(side=tk.LEFT, padx=(0, 8))
+        self.btn_static_3 = _FlatButton(static_inner, text="左后雷达静态标定", bg=ORANGE_PRIMARY,
+                                        hover=ORANGE_ACCENT, width=140, height=32)
+        self.btn_static_3.pack(side=tk.LEFT, padx=(0, 8))
+        self.btn_static_4 = _FlatButton(static_inner, text="右后雷达静态标定", bg=ORANGE_PRIMARY,
+                                        hover=ORANGE_ACCENT, width=140, height=32)
+        self.btn_static_4.pack(side=tk.LEFT)
 
         section_param = ttk.LabelFrame(inner, text="标定外参配置", style='Card.TLabelframe')
         section_param.pack(fill=tk.X, pady=(0, 8))
@@ -248,28 +253,39 @@ class RadarDiagnosticsGUI:
         btn_row = tk.Frame(param_inner, bg=BG_CARD)
         btn_row.pack(anchor=tk.W, pady=(8, 0))
 
-        self.btn_param_left = _FlatButton(btn_row, text="左雷达下发参数", bg=ORANGE_PRIMARY,
-                                          hover=ORANGE_ACCENT, width=130, height=32)
-        self.btn_param_left.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_param_1 = _FlatButton(btn_row, text="左前雷达下发参数", bg=ORANGE_PRIMARY,
+                                       hover=ORANGE_ACCENT, width=130, height=32)
+        self.btn_param_1.pack(side=tk.LEFT, padx=(0, 6))
+        self.btn_param_2 = _FlatButton(btn_row, text="右前雷达下发参数", bg=ORANGE_PRIMARY,
+                                       hover=ORANGE_ACCENT, width=130, height=32)
+        self.btn_param_2.pack(side=tk.LEFT, padx=(0, 6))
+        self.btn_param_3 = _FlatButton(btn_row, text="左后雷达下发参数", bg=ORANGE_PRIMARY,
+                                       hover=ORANGE_ACCENT, width=130, height=32)
+        self.btn_param_3.pack(side=tk.LEFT, padx=(0, 6))
+        self.btn_param_4 = _FlatButton(btn_row, text="右后雷达下发参数", bg=ORANGE_PRIMARY,
+                                       hover=ORANGE_ACCENT, width=130, height=32)
+        self.btn_param_4.pack(side=tk.LEFT, padx=(0, 6))
 
-        self.btn_param_right = _FlatButton(btn_row, text="右雷达下发参数", bg=ORANGE_PRIMARY,
-                                           hover=ORANGE_ACCENT, width=130, height=32)
-        self.btn_param_right.pack(side=tk.LEFT, padx=(0, 10))
+        btn_row2 = tk.Frame(param_inner, bg=BG_CARD)
+        btn_row2.pack(anchor=tk.W, pady=(6, 0))
 
-        self.btn_clear_left = _FlatButton(btn_row, text="左雷达清除参数", bg="#FFF5D8",
-                                          fg=ORANGE_PRIMARY, hover=ORANGE_LIGHT, width=130, height=32)
-        self.btn_clear_left.pack(side=tk.LEFT, padx=(0, 10))
-
-        self.btn_clear_right = _FlatButton(btn_row, text="右雷达清除参数", bg="#FFF5D8",
-                                           fg=ORANGE_PRIMARY, hover=ORANGE_LIGHT, width=130, height=32)
-        self.btn_clear_right.pack(side=tk.LEFT)
+        self.btn_clear_1 = _FlatButton(btn_row2, text="左前雷达清除参数", bg="#FFF5D8",
+                                       fg=ORANGE_PRIMARY, hover=ORANGE_LIGHT, width=130, height=32)
+        self.btn_clear_1.pack(side=tk.LEFT, padx=(0, 6))
+        self.btn_clear_2 = _FlatButton(btn_row2, text="右前雷达清除参数", bg="#FFF5D8",
+                                       fg=ORANGE_PRIMARY, hover=ORANGE_LIGHT, width=130, height=32)
+        self.btn_clear_2.pack(side=tk.LEFT, padx=(0, 6))
+        self.btn_clear_3 = _FlatButton(btn_row2, text="左后雷达清除参数", bg="#FFF5D8",
+                                       fg=ORANGE_PRIMARY, hover=ORANGE_LIGHT, width=130, height=32)
+        self.btn_clear_3.pack(side=tk.LEFT, padx=(0, 6))
+        self.btn_clear_4 = _FlatButton(btn_row2, text="右后雷达清除参数", bg="#FFF5D8",
+                                       fg=ORANGE_PRIMARY, hover=ORANGE_LIGHT, width=130, height=32)
+        self.btn_clear_4.pack(side=tk.LEFT)
 
     def _set_cal_buttons_state(self, state):
-        """设置标定按钮状态"""
-        for btn in (self.btn_static_left, self.btn_static_right,
-                     self.btn_param_left, self.btn_param_right,
-                     self.btn_clear_left, self.btn_clear_right):
-            btn.configure(state=state)
+        for i in range(1, 5):
+            for prefix in ('btn_static_', 'btn_param_', 'btn_clear_'):
+                getattr(self, prefix + str(i)).configure(state=state)
 
     def _build_log_area(self):
         """构建日志区域：显示 CAN 通讯日志"""

@@ -23,15 +23,31 @@ def _load_can_ids():
     cfg = configparser.ConfigParser()
     cfg.read(_CAL_CONFIG_PATH, encoding='utf-8')
     return {
-        'left_static_send':  int(cfg.get('CAN', 'left_static_send_id'), 0),
-        'left_static_recv':  int(cfg.get('CAN', 'left_static_recv_id'), 0),
-        'right_static_send': int(cfg.get('CAN', 'right_static_send_id'), 0),
-        'right_static_recv': int(cfg.get('CAN', 'right_static_recv_id'), 0),
-        'left_param_send':   int(cfg.get('CAN', 'left_param_send_id'), 0),
-        'left_param_recv':   int(cfg.get('CAN', 'left_param_recv_id'), 0),
-        'right_param_send':  int(cfg.get('CAN', 'right_param_send_id'), 0),
-        'right_param_recv':  int(cfg.get('CAN', 'right_param_recv_id'), 0),
+        'left_front_static_send':  int(cfg.get('CAN', 'left_front_static_send_id'), 0),
+        'left_front_static_recv':  int(cfg.get('CAN', 'left_front_static_recv_id'), 0),
+        'right_front_static_send': int(cfg.get('CAN', 'right_front_static_send_id'), 0),
+        'right_front_static_recv': int(cfg.get('CAN', 'right_front_static_recv_id'), 0),
+        'left_rear_static_send':   int(cfg.get('CAN', 'left_rear_static_send_id'), 0),
+        'left_rear_static_recv':   int(cfg.get('CAN', 'left_rear_static_recv_id'), 0),
+        'right_rear_static_send':  int(cfg.get('CAN', 'right_rear_static_send_id'), 0),
+        'right_rear_static_recv':  int(cfg.get('CAN', 'right_rear_static_recv_id'), 0),
+        'left_front_param_send':   int(cfg.get('CAN', 'left_front_param_send_id'), 0),
+        'left_front_param_recv':   int(cfg.get('CAN', 'left_front_param_recv_id'), 0),
+        'right_front_param_send':  int(cfg.get('CAN', 'right_front_param_send_id'), 0),
+        'right_front_param_recv':  int(cfg.get('CAN', 'right_front_param_recv_id'), 0),
+        'left_rear_param_send':    int(cfg.get('CAN', 'left_rear_param_send_id'), 0),
+        'left_rear_param_recv':    int(cfg.get('CAN', 'left_rear_param_recv_id'), 0),
+        'right_rear_param_send':   int(cfg.get('CAN', 'right_rear_param_send_id'), 0),
+        'right_rear_param_recv':   int(cfg.get('CAN', 'right_rear_param_recv_id'), 0),
     }
+
+_RADAR_INFO = [
+    (None, None, None),
+    ('left_front', '左前雷达', 'LeftFrontRadar'),
+    ('right_front', '右前雷达', 'RightFrontRadar'),
+    ('left_rear', '左后雷达', 'LeftRearRadar'),
+    ('right_rear', '右后雷达', 'RightRearRadar'),
+]
 
 def _clean_val(cfg, section, key):
     val = cfg.get(section, key)
@@ -132,12 +148,11 @@ class CalibrationManager:
             if keep_alive_data is not None: # 4 通知后台线程停止
                 stop_poll.set()
 
-    def static_calibration(self, is_right_radar):
-        """静态标定"""
-        send_id = self._can_ids['right_static_send'] if is_right_radar else self._can_ids['left_static_send']
-        recv_id = self._can_ids['right_static_recv'] if is_right_radar else self._can_ids['left_static_recv']
-
-        radar_name = "右雷达" if is_right_radar else "左雷达"
+    def static_calibration(self, radar_index):
+        """静态标定 1=左前 2=右前 3=左后 4=右后"""
+        key, radar_name, _ = _RADAR_INFO[radar_index]
+        send_id = self._can_ids[f'{key}_static_send']
+        recv_id = self._can_ids[f'{key}_static_recv']
         self._log(f"[INFO] 开始{radar_name}静态标定...", "INFO")
 
         resp = self._send_and_wait(send_id, [0x02], recv_id, [0x02, 0x01], CAL_TIMEOUT_PARAM, keep_alive_data=[0x00])
@@ -159,12 +174,12 @@ class CalibrationManager:
 
             if recv.arbitration_id != recv_id or len(recv.data) < 3 or recv.data[0] != 0x04:
                 continue
-
+            
+            self._parse_cal_result(recv.data[1:])
             if recv.data[2] == 0x03:
                 self._log(f"[INFO] {radar_name}标定进行中，持续等待结果...", "INFO")
                 continue
 
-            self._parse_cal_result(recv.data[1:])
             self._log("", "INFO")
             return
 
@@ -184,9 +199,8 @@ class CalibrationManager:
         self._log(f"  标定结果: {RESULT_STATUS_MAP.get(cal_result, f'未知({cal_result})')}", "OK")
         self._log(f"  标定状态: {ERROR_CODE_MAP.get(error_code, f'未知({error_code})')}", "OK")
 
-    def _read_cal_params(self, is_right_radar):
-        section = 'RightRadar' if is_right_radar else 'LeftRadar'
-        radar_name = "右雷达" if is_right_radar else "左雷达"
+    def _read_cal_params(self, radar_index):
+        _, radar_name, section = _RADAR_INFO[radar_index]
 
         cfg = configparser.ConfigParser()
         if not os.path.exists(_CAL_CONFIG_PATH):
@@ -219,16 +233,16 @@ class CalibrationManager:
                   f"roll={params['roll_angle']:.2f}", "OK")
         return params
 
-    def send_params(self, is_right_radar):
+    def send_params(self, radar_index):
         """下发标定参数"""
-        params = self._read_cal_params(is_right_radar)
+        params = self._read_cal_params(radar_index)
         if params is None:
             self._log("", "INFO")
             return False
 
-        send_id = self._can_ids['right_param_send'] if is_right_radar else self._can_ids['left_param_send']
-        recv_id = self._can_ids['right_param_recv'] if is_right_radar else self._can_ids['left_param_recv']
-        radar_name = "右雷达" if is_right_radar else "左雷达"
+        key, radar_name, _ = _RADAR_INFO[radar_index]
+        send_id = self._can_ids[f'{key}_param_send']
+        recv_id = self._can_ids[f'{key}_param_recv']
 
         # 构建参数数据包
         packed = PARAM_STRUCT.pack(
@@ -249,11 +263,11 @@ class CalibrationManager:
         self._log("", "INFO")
         return True
 
-    def clear_params(self, is_right_radar):
+    def clear_params(self, radar_index):
         """清除标定参数"""
-        send_id = self._can_ids['right_param_send'] if is_right_radar else self._can_ids['left_param_send']
-        recv_id = self._can_ids['right_param_recv'] if is_right_radar else self._can_ids['left_param_recv']
-        radar_name = "右雷达" if is_right_radar else "左雷达"
+        key, radar_name, _ = _RADAR_INFO[radar_index]
+        send_id = self._can_ids[f'{key}_param_send']
+        recv_id = self._can_ids[f'{key}_param_recv']
 
         self._log(f"[INFO] 清除{radar_name}标定参数...", "INFO")
         resp = self._send_and_wait(send_id, [0x02], recv_id, [0x02, 0x01], CAL_TIMEOUT_PARAM)

@@ -39,12 +39,18 @@ class Application:
         self.gui.btn_refresh.configure(command=self._refresh_channels)
 
         # 标定功能按钮
-        self.gui.btn_static_left.configure(command=lambda: self._cal_action(self._on_static_cal, False))
-        self.gui.btn_static_right.configure(command=lambda: self._cal_action(self._on_static_cal, True))
-        self.gui.btn_param_left.configure(command=lambda: self._cal_action(self._on_send_params, False))
-        self.gui.btn_param_right.configure(command=lambda: self._cal_action(self._on_send_params, True))
-        self.gui.btn_clear_left.configure(command=lambda: self._cal_action(self._on_clear_params, False))
-        self.gui.btn_clear_right.configure(command=lambda: self._cal_action(self._on_clear_params, True))
+        self.gui.btn_static_1.configure(command=lambda: self._cal_action(self._on_static_cal, 1))
+        self.gui.btn_static_2.configure(command=lambda: self._cal_action(self._on_static_cal, 2))
+        self.gui.btn_static_3.configure(command=lambda: self._cal_action(self._on_static_cal, 3))
+        self.gui.btn_static_4.configure(command=lambda: self._cal_action(self._on_static_cal, 4))
+        self.gui.btn_param_1.configure(command=lambda: self._cal_action(self._on_send_params, 1))
+        self.gui.btn_param_2.configure(command=lambda: self._cal_action(self._on_send_params, 2))
+        self.gui.btn_param_3.configure(command=lambda: self._cal_action(self._on_send_params, 3))
+        self.gui.btn_param_4.configure(command=lambda: self._cal_action(self._on_send_params, 4))
+        self.gui.btn_clear_1.configure(command=lambda: self._cal_action(self._on_clear_params, 1))
+        self.gui.btn_clear_2.configure(command=lambda: self._cal_action(self._on_clear_params, 2))
+        self.gui.btn_clear_3.configure(command=lambda: self._cal_action(self._on_clear_params, 3))
+        self.gui.btn_clear_4.configure(command=lambda: self._cal_action(self._on_clear_params, 4))
 
         # 日志下载按钮
         self.gui.btn_download_log.configure(command=self.gui.download_log)
@@ -102,26 +108,23 @@ class Application:
         # 等待标定操作完成,1500ms 后启用按钮状态
         self.root.after(1500, lambda: self.gui._set_cal_buttons_state(tk.NORMAL))
 
-    def _on_static_cal(self, is_right_radar):
-        """触发静态标定"""
+    def _on_static_cal(self, radar_index):
         mgr = self._get_cal_mgr()
         if mgr is None:
             return
-        mgr.static_calibration(is_right_radar)
+        mgr.static_calibration(radar_index)
 
-    def _on_send_params(self, is_right_radar):
-        """发送标定参数"""
+    def _on_send_params(self, radar_index):
         mgr = self._get_cal_mgr()
         if mgr is None:
             return
-        mgr.send_params(is_right_radar)
+        mgr.send_params(radar_index)
 
-    def _on_clear_params(self, is_right_radar):
-        """清除标定参数"""
+    def _on_clear_params(self, radar_index):
         mgr = self._get_cal_mgr()
         if mgr is None:
             return
-        mgr.clear_params(is_right_radar)
+        mgr.clear_params(radar_index)
 
     def _on_connect(self):
         """连接CAN 通道 按钮的实例"""
@@ -137,10 +140,14 @@ class Application:
         
         ids = _load_can_ids()
         filters = [
-            {"can_id": ids['left_static_recv'], "can_mask": 0x7FF, "extended": False},
-            {"can_id": ids['right_static_recv'], "can_mask": 0x7FF, "extended": False},
-            {"can_id": ids['left_param_recv'], "can_mask": 0x7FF, "extended": False},
-            {"can_id": ids['right_param_recv'], "can_mask": 0x7FF, "extended": False},
+            {"can_id": ids['left_front_static_recv'], "can_mask": 0x7FF, "extended": False},
+            {"can_id": ids['right_front_static_recv'], "can_mask": 0x7FF, "extended": False},
+            {"can_id": ids['left_rear_static_recv'], "can_mask": 0x7FF, "extended": False},
+            {"can_id": ids['right_rear_static_recv'], "can_mask": 0x7FF, "extended": False},
+            {"can_id": ids['left_front_param_recv'], "can_mask": 0x7FF, "extended": False},
+            {"can_id": ids['right_front_param_recv'], "can_mask": 0x7FF, "extended": False},
+            {"can_id": ids['left_rear_param_recv'], "can_mask": 0x7FF, "extended": False},
+            {"can_id": ids['right_rear_param_recv'], "can_mask": 0x7FF, "extended": False},
         ]
         self.gui.log(f"[INFO] CAN 总线过滤器: {filters}", "INFO")
         

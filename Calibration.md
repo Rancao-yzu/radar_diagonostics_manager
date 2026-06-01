@@ -2,13 +2,21 @@
 
 ## 静态标定基本配置(大端)
 ### A
-左雷达
+左前雷达
 - 上位机发送 CAN ID=0x61, Data=02
 - ECU 响应：ID=0x71, Data=02 01
   
-右雷达
+右前雷达
 - 发送 CAN ID=0x261, Data=02
 - ECU 响应：ID=0x271, Data=02 01
+
+左后雷达
+- 上位机发送 CAN ID=0x461, Data=02
+- ECU 响应：ID=0x471, Data=02 01
+  
+右后雷达
+- 发送 CAN ID=0x661, Data=02
+- ECU 响应：ID=0x671, Data=02 01
 
 - if 没有合法响应   持续5s，等待ECU响应
 
@@ -34,7 +42,7 @@
 
 ## 标定外参配置(大端)
 ### A
-左雷达
+左前雷达
 下发参数
 - 发送 CAN ID=0x60, Data=01 xx xx
 - ECU 响应：ID=0x70, Data=01 01
@@ -43,7 +51,7 @@
 - 发送 CAN ID=0x60, Data=02
 - ECU 响应：ID=0x70, Data=02 01
   
-右雷达
+右前雷达
 下发参数
 - 发送 CAN ID=0x260, Data=01 xx xx xx xx xx xx xx xx
 - ECU 响应：ID=0x270, Data=01 01
@@ -51,6 +59,24 @@
 清除参数（清除OA）
 - 发送 CAN ID=0x260, Data=02
 - ECU 响应：ID=0x270, Data=02 01
+
+左后雷达
+下发参数
+- 发送 CAN ID=0x460, Data=01 xx xx
+- ECU 响应：ID=0x470, Data=01 01
+
+清除参数（清除OA）
+- 发送 CAN ID=0x460, Data=02
+- ECU 响应：ID=0x470, Data=02 01
+  
+右后雷达
+下发参数
+- 发送 CAN ID=0x660, Data=01 xx xx xx xx xx xx xx xx
+- ECU 响应：ID=0x670, Data=01 01
+
+清除参数（清除OA）
+- 发送 CAN ID=0x660, Data=02
+- ECU 响应：ID=0x670, Data=02 01
 
 - if 没有合法响应   持续3s，等待ECU响应
 
