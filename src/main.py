@@ -12,6 +12,7 @@ from gui_main import RadarDiagnosticsGUI
 from can_config import check_can_interfaces
 from calibration import CalibrationManager, _load_can_ids
 from sync import TimeSyncManager
+from dtc import DTCManager, load_dtc_config
 import can
 
 class Application:
@@ -24,6 +25,8 @@ class Application:
         self._cal_mgr = None
         self._sync_mgr = None
         self._sync_timer_id = None
+        self._dtc_mgr = None
+        self._dtc_refresh_id = None
 
         self._bind_events()
 
@@ -57,6 +60,10 @@ class Application:
 
         # 时间同步复选框
         self.gui.chk_time_sync.configure(command=self._on_time_sync_toggle)
+
+        # DTC 按钮
+        self.gui.btn_dtc_start._command = self._on_dtc_start
+        self.gui.btn_dtc_stop._command = self._stop_dtc
 
         # 窗口关闭回调
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -149,6 +156,10 @@ class Application:
             {"can_id": ids['left_rear_param_recv'], "can_mask": 0x7FF, "extended": False},
             {"can_id": ids['right_rear_param_recv'], "can_mask": 0x7FF, "extended": False},
         ]
+
+        dtc_ids = load_dtc_config()['can_ids']
+        for key, can_id in dtc_ids.items():
+            filters.append({"can_id": can_id, "can_mask": 0x7FF, "extended": False})
         self.gui.log(f"[INFO] CAN 总线过滤器: {filters}", "INFO")
         
         self._bus = can.interface.Bus(
@@ -162,15 +173,43 @@ class Application:
         self._cal_mgr = None
         self._sync_mgr = None
         self._stop_time_sync()
+        self._stop_dtc()
+        self._dtc_mgr = None
         self.gui.time_sync_var.set(False)
         self.gui.set_connection_status(True)
         self.gui.log(f"[OK] 已连接 — Channel: {channel}, Bitrate: {bitrate}, Data Bitrate: {data_bitrate}", "OK")
 
     def _on_close(self):
         self._stop_time_sync()
+        self._stop_dtc()
         if self._bus is not None:
             self._bus.shutdown()
         self.root.destroy()
+
+    def _on_dtc_start(self):
+        if self._bus is None:
+            self.gui.log('[DTC WARN] 请先连接 CAN 总线', 'ERROR')
+            return
+        if self._dtc_mgr is None:
+            self._dtc_mgr = DTCManager(self._bus, log_callback=self.gui.log)
+        self._dtc_mgr.start()
+        self.gui.dtc_set_buttons_state(True)
+        self._dtc_refresh_table()
+
+    def _stop_dtc(self):
+        if self._dtc_refresh_id is not None:
+            self.root.after_cancel(self._dtc_refresh_id)
+            self._dtc_refresh_id = None
+        if self._dtc_mgr is not None:
+            self._dtc_mgr.stop()
+        self.gui.dtc_set_buttons_state(False)
+        self.gui.dtc_update_table(None)
+
+    def _dtc_refresh_table(self):
+        if self._dtc_mgr is not None and self._dtc_mgr.is_running():
+            data = self._dtc_mgr.get_all_data()
+            self.gui.dtc_update_table(data)
+            self._dtc_refresh_id = self.root.after(500, self._dtc_refresh_table)
 
     def _refresh_channels(self):
         """扫描可用 CAN 通道，更新下拉列表，完成后恢复鼠标样式"""

@@ -203,14 +203,79 @@ class RadarDiagnosticsGUI:
         tk.Label(inner, text="DTC 读取/清除", font=('Microsoft YaHei', 11, 'bold'),
                  fg=TEXT_DARK, bg=BG_CARD).pack(anchor=tk.W, pady=(0, 10))
 
-        placeholder = tk.Frame(inner, bg=ORANGE_LIGHT)
-        placeholder.pack(fill=tk.BOTH, expand=True)
+        btn_frame = tk.Frame(inner, bg=BG_CARD)
+        btn_frame.pack(fill=tk.X, pady=(0, 8))
 
-        ph_inner = tk.Frame(placeholder, bg=ORANGE_LIGHT)
-        ph_inner.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        self.btn_dtc_start = _FlatButton(btn_frame, text="开始接收", bg=ORANGE_PRIMARY,
+                                         hover=ORANGE_ACCENT, width=100, height=32)
+        self.btn_dtc_start.pack(side=tk.LEFT, padx=(0, 10))
 
-        tk.Label(ph_inner, text="DTC 读取/清除功能开发中...",
-                 font=('Microsoft YaHei', 14), fg=ORANGE_ACCENT, bg=ORANGE_LIGHT).pack()
+        self.btn_dtc_stop = _FlatButton(btn_frame, text="停止接收", bg="#FFD8D8",
+                                        fg=ORANGE_PRIMARY, hover=ORANGE_LIGHT, width=100, height=32)
+        self.btn_dtc_stop.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_dtc_stop.set_enabled(False)
+
+        self.dtc_status_var = tk.StringVar(value="● 未接收")
+        tk.Label(btn_frame, textvariable=self.dtc_status_var,
+                 font=('Microsoft YaHei', 9), fg=ORANGE_ACCENT, bg=BG_CARD).pack(side=tk.LEFT, padx=(10, 0))
+
+        tree_frame = tk.Frame(inner, bg=BG_CARD)
+        tree_frame.pack(fill=tk.BOTH, expand=True)
+
+        columns = ('node', 'group', 'entry', 'status_mask', 'dtc_type', 'dtc_num', 'change_ts')
+        self.dtc_tree = ttk.Treeview(tree_frame, columns=columns, show='headings', height=12)
+
+        col_widths = {'node': 80, 'group': 60, 'entry': 60, 'status_mask': 90, 'dtc_type': 160, 'dtc_num': 120, 'change_ts': 120}
+        col_labels = {'node': '节点', 'group': '组', 'entry': '条目', 'status_mask': 'StatusMask', 'dtc_type': 'DTC类型', 'dtc_num': 'DTC码', 'change_ts': '变化时间戳(ms)'}
+        for col in columns:
+            self.dtc_tree.heading(col, text=col_labels.get(col, col))
+            self.dtc_tree.column(col, width=col_widths.get(col, 100), anchor=tk.CENTER)
+
+        tree_scroll = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=self.dtc_tree.yview)
+        self.dtc_tree.configure(yscrollcommand=tree_scroll.set)
+
+        self.dtc_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        tree_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.dtc_tree.tag_configure('even_row', background='white')
+        self.dtc_tree.tag_configure('odd_row', background='#FFF0E0')
+
+        self._dtc_refresh_id = None
+
+    def dtc_set_buttons_state(self, running):
+        if running:
+            self.btn_dtc_start.set_enabled(False)
+            self.btn_dtc_stop.set_enabled(True)
+            self.dtc_status_var.set("● 接收中")
+        else:
+            self.btn_dtc_start.set_enabled(True)
+            self.btn_dtc_stop.set_enabled(False)
+            self.dtc_status_var.set("● 未接收")
+
+    def dtc_update_table(self, all_entries):
+        for item in self.dtc_tree.get_children():
+            self.dtc_tree.delete(item)
+
+        if all_entries is None:
+            return
+
+        row_idx = 0
+        for node in ['FL', 'FR', 'RL', 'RR']:
+            entries = all_entries.get(node, [])
+            for entry in entries:
+                dtc_type_str = ','.join(entry.get('dtc_type_labels', []))
+                status_str = ','.join(entry.get('status_mask_labels', []))
+                tag = 'even_row' if row_idx % 2 == 0 else 'odd_row'
+                self.dtc_tree.insert('', tk.END, values=(
+                    node,
+                    entry.get('group', ''),
+                    entry.get('entry', ''),
+                    f"0x{entry.get('status_mask', 0):02X} ({status_str})",
+                    f"0x{entry.get('dtc_type', 0):02X} ({dtc_type_str})",
+                    f"0x{entry.get('dtc_num', 0):08X}",
+                    entry.get('change_ts', 0),
+                ), tags=(tag,))
+                row_idx += 1
 
     def _build_cal_panel(self):
         """构建 标定和标定查询面板"""
