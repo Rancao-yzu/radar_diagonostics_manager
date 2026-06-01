@@ -55,6 +55,15 @@ def setup_styles():
                     relief='flat', borderwidth=0)
     style.map('Treeview.Heading', background=[('active', ORANGE_LIGHT)])
 
+    # OTA 进度条样式
+    style.configure('OTA.Horizontal.TProgressbar',
+                    troughcolor=ORANGE_LIGHT,
+                    background=ORANGE_PRIMARY,
+                    thickness=18,
+                    borderwidth=0,
+                    lightcolor=ORANGE_PRIMARY,
+                    darkcolor=ORANGE_PRIMARY)
+
 class _FlatButton(tk.Canvas):
     """扁平按钮：Canvas 自绘矩形 + 文字，支持 hover 变色、禁用态"""
 

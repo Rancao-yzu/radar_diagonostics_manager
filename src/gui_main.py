@@ -141,20 +141,57 @@ class RadarDiagnosticsGUI:
         """构建 OTA 升级面板"""
         self.ota_panel = ttk.Frame(self.main_area, style='Card.TFrame')
 
+        # 外层容器
         inner = tk.Frame(self.ota_panel, bg=BG_CARD)
         inner.pack(fill=tk.BOTH, expand=True, padx=CARD_PAD[0], pady=CARD_PAD[1])
 
+        # 标题
         tk.Label(inner, text="OTA 升级", font=('Microsoft YaHei', 11, 'bold'),
                  fg=TEXT_DARK, bg=BG_CARD).pack(anchor=tk.W, pady=(0, 10))
 
-        placeholder = tk.Frame(inner, bg=ORANGE_LIGHT)
-        placeholder.pack(fill=tk.BOTH, expand=True)
+        # ---- 固件文件选择 ----
+        section_file = ttk.LabelFrame(inner, text="固件文件", style='Card.TLabelframe')
+        section_file.pack(fill=tk.X, pady=(0, 8))
 
-        ph_inner = tk.Frame(placeholder, bg=ORANGE_LIGHT)
-        ph_inner.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        file_inner = tk.Frame(section_file, bg=BG_CARD)
+        file_inner.pack(fill=tk.X, padx=CARD_PAD[0], pady=CARD_PAD[1])
 
-        tk.Label(ph_inner, text="OTA 升级功能开发中...",
-                 font=('Microsoft YaHei', 14), fg=ORANGE_ACCENT, bg=ORANGE_LIGHT).pack()
+        self.ota_file_var = tk.StringVar()
+        self.ota_file_entry = ttk.Entry(file_inner, textvariable=self.ota_file_var,
+                                        width=45, state="readonly", font=('Microsoft YaHei', 9))
+        self.ota_file_entry.pack(side=tk.LEFT, padx=(0, 8))
+
+        self.btn_ota_browse = _FlatButton(file_inner, text="浏览", bg=ORANGE_PRIMARY,
+                                          hover=ORANGE_ACCENT, width=60, height=28)
+        self.btn_ota_browse.pack(side=tk.LEFT)
+
+        # ---- 升级进度 ----
+        section_progress = ttk.LabelFrame(inner, text="升级进度", style='Card.TLabelframe')
+        section_progress.pack(fill=tk.X, pady=(0, 8))
+
+        progress_inner = tk.Frame(section_progress, bg=BG_CARD)
+        progress_inner.pack(fill=tk.X, padx=CARD_PAD[0], pady=CARD_PAD[1])
+
+        self.ota_progress = ttk.Progressbar(
+            progress_inner, mode='determinate', length=400,
+            style='OTA.Horizontal.TProgressbar')
+        self.ota_progress.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.ota_progress_var = tk.StringVar(value="0%")
+        tk.Label(progress_inner, textvariable=self.ota_progress_var,
+                 font=('Microsoft YaHei', 9, 'bold'),
+                 fg=ORANGE_PRIMARY, bg=BG_CARD).pack(side=tk.LEFT)
+
+        # ---- 操作按钮 ----
+        section_action = ttk.LabelFrame(inner, text="操作", style='Card.TLabelframe')
+        section_action.pack(fill=tk.X)
+
+        action_inner = tk.Frame(section_action, bg=BG_CARD)
+        action_inner.pack(fill=tk.X, padx=CARD_PAD[0], pady=CARD_PAD[1])
+
+        self.btn_ota_start = _FlatButton(action_inner, text="开始升级", bg=ORANGE_PRIMARY,
+                                         hover=ORANGE_ACCENT, width=100, height=32)
+        self.btn_ota_start.pack(side=tk.LEFT, padx=(0, 10))
 
     def _build_dtc_panel(self):
         """构建 DTC 读取/清除面板"""
@@ -248,10 +285,22 @@ class RadarDiagnosticsGUI:
         tk.Label(header, text="通讯日志", font=('Microsoft YaHei', 10, 'bold'),
                  fg=TEXT_DARK, bg=BG_CARD).pack(side=tk.LEFT)
 
+        # 下载日志按钮
         self.btn_download_log = _FlatButton(header, text="↓", bg=ORANGE_PRIMARY,
                                             hover=ORANGE_ACCENT, width=24, height=20)
         self.btn_download_log.pack(side=tk.LEFT, padx=(6, 0))
 
+        # 时间同步勾选框（最右侧）
+        self.time_sync_var = tk.BooleanVar()
+        self.chk_time_sync = tk.Checkbutton(header, text="时间同步",
+                                            variable=self.time_sync_var,
+                                            bg=BG_CARD, fg=ORANGE_ACCENT,
+                                            selectcolor=BG_CARD,
+                                            activebackground=BG_CARD,
+                                            font=('Microsoft YaHei', 9))
+        self.chk_time_sync.pack(side=tk.RIGHT, padx=(0, 6))
+
+        # 日志颜色图例
         legend = tk.Frame(header, bg=BG_CARD)
         legend.pack(side=tk.RIGHT)
 

@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 from gui_main import RadarDiagnosticsGUI
 from can_config import check_can_interfaces
 from calibration import CalibrationManager, _load_can_ids
+from sync import TimeSyncManager
 import can
 
 class Application:
@@ -21,6 +22,8 @@ class Application:
         self.gui = RadarDiagnosticsGUI(self.root)
         self._bus = None
         self._cal_mgr = None
+        self._sync_mgr = None
+        self._sync_timer_id = None
 
         self._bind_events()
 
@@ -46,6 +49,9 @@ class Application:
         # 日志下载按钮
         self.gui.btn_download_log.configure(command=self.gui.download_log)
 
+        # 时间同步复选框
+        self.gui.chk_time_sync.configure(command=self._on_time_sync_toggle)
+
         # 窗口关闭回调
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
@@ -56,6 +62,38 @@ class Application:
                 return None
             self._cal_mgr = CalibrationManager(self._bus, log_callback=self.gui.log)
         return self._cal_mgr
+
+    def _get_sync_mgr(self):
+        """懒加载时间同步管理器，未连接时提示并返回 None"""
+        if self._sync_mgr is None:
+            if self._bus is None:
+                self.gui.log("[WARN] 请先点击连接按钮", "ERROR")
+                return None
+            self._sync_mgr = TimeSyncManager(self._bus, log_callback=self.gui.log)
+        return self._sync_mgr
+
+    def _on_time_sync_toggle(self):
+        """勾选框状态变化回调：勾选 → 启动定时发送，取消 → 停止"""
+        if self.gui.time_sync_var.get():
+            self._start_time_sync()
+        else:
+            self._stop_time_sync()
+
+    def _start_time_sync(self):
+        """每 1 秒发送一次时间同步帧，通过 after 递归调度"""
+        mgr = self._get_sync_mgr()
+        if mgr is None:
+            self.gui.time_sync_var.set(False)
+            return
+        mgr.build_and_send()
+        # 每 1 秒发送一次时间同步帧
+        self._sync_timer_id = self.root.after(1000, self._start_time_sync)
+
+    def _stop_time_sync(self):
+        """取消 after 定时器，停止时间同步"""
+        if self._sync_timer_id is not None:
+            self.root.after_cancel(self._sync_timer_id)
+            self._sync_timer_id = None
 
     def _cal_action(self, target, *args):
         """执行标定操作，禁用按钮，完成后启用"""
@@ -115,10 +153,14 @@ class Application:
             can_filters=filters,
         )
         self._cal_mgr = None
+        self._sync_mgr = None
+        self._stop_time_sync()
+        self.gui.time_sync_var.set(False)
         self.gui.set_connection_status(True)
         self.gui.log(f"[OK] 已连接 — Channel: {channel}, Bitrate: {bitrate}, Data Bitrate: {data_bitrate}", "OK")
 
     def _on_close(self):
+        self._stop_time_sync()
         if self._bus is not None:
             self._bus.shutdown()
         self.root.destroy()
