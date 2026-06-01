@@ -37,7 +37,7 @@ a = Analysis(
         'setuptools',                     # 安装工具
         'pip',                            # 包管理器
         'pkg_resources',                  # 资源管理
-        'email',                          # 邮件模块
+
         'http',                           # HTTP 模块
         'xmlrpc',                         # XML-RPC
         'wsgiref',                        # WSGI

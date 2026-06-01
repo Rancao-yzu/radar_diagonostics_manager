@@ -15,20 +15,6 @@ _DTC_CONFIG_PATH = os.path.join(
 # 四个雷达节点缩写
 _RADAR_NODES = ['FL', 'FR', 'RL', 'RR']
 
-
-DTC_TYPE_MAP = {
-    0: '本轮上电故障发生',
-    1: '本轮上电发生过故障',
-    2: '上轮上电发生过故障',
-}
-
-# DTC 状态掩码位名称映射
-STATUS_MASK_MAP = {
-    0: 'bit0', 1: 'bit1', 2: 'bit2', 3: 'bit3',
-    4: 'bit4', 5: 'bit5', 6: 'bit6', 7: 'bit7',
-}
-
-
 class DTCManager:
     """DTC 诊断消息管理器 —— 接收并解析 6 个雷达节点的 DTC CAN 消息
 
@@ -201,8 +187,8 @@ class DTCManager:
         # 在锁外解析类型标签，避免长时间持锁
         for node in data:
             for entry in data[node]:
-                entry['dtc_type_labels'] = DTCManager.resolve_dtc_type(entry.get('dtc_type', 0))
-                entry['status_mask_labels'] = DTCManager.resolve_status_mask(entry.get('status_mask', 0))
+                entry['dtc_type_labels'] = self.resolve_dtc_type(entry.get('dtc_type', 0))
+                entry['status_mask_labels'] = self.resolve_status_mask(entry.get('status_mask', 0))
         return data
 
     def get_node_data(self, node):
@@ -218,33 +204,26 @@ class DTCManager:
         with self._lock:
             data = copy.deepcopy(self._all_entries.get(node, []))
         for entry in data:
-            entry['dtc_type_labels'] = DTCManager.resolve_dtc_type(entry.get('dtc_type', 0))
-            entry['status_mask_labels'] = DTCManager.resolve_status_mask(entry.get('status_mask', 0))
+            entry['dtc_type_labels'] = self.resolve_dtc_type(entry.get('dtc_type', 0))
+            entry['status_mask_labels'] = self.resolve_status_mask(entry.get('status_mask', 0))
         return data
 
-    @staticmethod
-    def resolve_dtc_type(dtc_type_byte):
-        """解析 dtc_type 字节，返回各 bit 的中文含义列表
-
-        例如: 0x03 -> ['本轮上电故障发生', '本轮上电发生过故障']
-        """
+    def resolve_dtc_type(self, dtc_type_byte):
+        """解析 dtc_type 字节，返回各 bit 的含义列表（从 config 读取）"""
         results = []
         for bit_pos in range(8):
             if dtc_type_byte & (1 << bit_pos):
-                label = DTC_TYPE_MAP.get(bit_pos, f'bit{bit_pos}')
+                label = self._dtc_type_bits.get(bit_pos, f'bit{bit_pos}')
                 results.append(label)
         return results if results else ['无']
 
-    @staticmethod
-    def resolve_status_mask(status_byte):
-        """解析 status_mask 字节，返回置位 bit 的名称列表
-
-        例如: 0x05 -> ['bit0', 'bit2']
-        """
+    def resolve_status_mask(self, status_byte):
+        """解析 status_mask 字节，返回各 bit 的含义列表（从 config 读取）"""
         results = []
         for bit_pos in range(8):
             if status_byte & (1 << bit_pos):
-                results.append(f'bit{bit_pos}')
+                label = self._status_mask_bits.get(bit_pos, f'bit{bit_pos}')
+                results.append(label)
         return results if results else ['无']
 
 
