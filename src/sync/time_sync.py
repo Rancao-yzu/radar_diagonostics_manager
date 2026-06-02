@@ -1,19 +1,7 @@
 # -*- coding: utf-8 -*-
 import struct
 import time
-
 import can
-
-# CANFD 扩展帧 0x0400，16 字节
-# 字段布局（大端序）：
-#   Byte0      — 消息类型         u8
-#   Byte1~2    — CRC-16 校验码    u16
-#   Byte3      — 帧序列号         u8
-#   Byte4      — 设备状态字       u8
-#   Byte5~8    — 全局时间秒       u32
-#   Byte9~12   — 全局时间纳秒     u32
-#   Byte13~15  — 协议保留位
-
 
 def _crc16_ccitt(data: bytes) -> int:
     """CRC-16/CCITT (poly=0x1021, init=0xFFFF)"""
@@ -28,6 +16,12 @@ def _crc16_ccitt(data: bytes) -> int:
             crc &= 0xFFFF
     return crc
 
+_TSYNC_CAN_IDS = {
+    "FL": 0x040,  # 前左轮
+    "FR": 0x041,  # 前右轮
+    "RL": 0x042,  # 后左轮
+    "RR": 0x043,  # 后右轮
+}
 
 class TimeSyncManager:
     """时间同步管理器 — 打包 CANFD 扩展帧并通过共享总线发送"""
@@ -43,48 +37,52 @@ class TimeSyncManager:
             self.log_callback(msg, tag)
 
     def build_and_send(self, msg_type=0x20):
-        """取当前系统时间，按协议打包 16 字节 CANFD 扩展帧并通过共享总线发送"""
+        """取当前系统时间，按协议打包 64 字节 CANFD 扩展帧，向四轮 CAN ID 各发一帧"""
         now = time.time()
         seconds = int(now)
         nanos = int((now - seconds) * 1e9)
 
-        raw = bytearray(16)
+        raw = bytearray(64)
 
-        # Byte0   — 消息类型（1 字节，u8），固定 0x20
-        raw[0] = msg_type
+        # Byte2~5 — TSYNC_GT_Nanoseconds（4 字节，大端序 u32）
+        struct.pack_into('>I', raw, 2, nanos)
 
-        # Byte3   — 帧序列号（1 字节，u8），每发一帧自增，0~255 循环
-        raw[3] = self._seq_counter
+        # Byte6~9 — TSYNC_GT_Seconds（4 字节，大端序 u32）
+        struct.pack_into('>I', raw, 6, seconds)
 
-        # Byte4   — 设备状态字（1 字节，u8），当前固定 0x00
-        raw[4] = 0x00
+        # Byte10  — TSYNC_message_type（1 字节，u8），消息类型
+        raw[10] = msg_type
 
-        # Byte5~8 — 全局时间秒（4 字节，大端序 u32）
-        struct.pack_into('>I', raw, 5, seconds)
+        # Byte11  — TSYNC_SequenceCounter（1 字节，u8），每发一帧自增，0~255 循环
+        raw[11] = self._seq_counter
 
-        # Byte9~12 — 全局时间纳秒（4 字节，大端序 u32）
-        struct.pack_into('>I', raw, 9, nanos)
+        # Byte12~14 — TSYNC_Reserved（3 字节，u24），协议保留位，填充 0x00
+        raw[12:15] = b'\x00' * 3
 
-        # Byte13~15 — 协议保留位（3 字节，填充 0x00）
-        raw[13:16] = b'\x00' * 3
+        # Byte15  — TSYNC_Status（1 字节，u8），设备状态字，当前固定 0x00
+        raw[15] = 0x00
 
-        # 计算 CRC-16 (Byte1~2)，整帧 16 字节全部参与运算
-        # raw 中 Byte1~2 此时为 0x00，CRC 计算后再填充
-        crc = _crc16_ccitt(bytes(raw))
-        struct.pack_into('>H', raw, 1, crc)
+        # Byte16~63 — 未使用，填充 0x00
+        raw[16:64] = b'\x00' * 48
+
+        # Byte0~1 — TSYNC_CRC（2 字节，大端序 u16）
+        # CRC 校验范围：Byte2~Byte63（除 CRC 字段外的其它有效数据）
+        crc = _crc16_ccitt(bytes(raw[2:64]))
+        struct.pack_into('>H', raw, 0, crc)
 
         self._log(f"[SYNC] 发送时间同步帧 seq={self._seq_counter} "
                   f"s={seconds} ns={nanos} crc=0x{crc:04X}", "SEND")
 
-        # 构造 CANFD 扩展帧，CAN ID = 0x0400，16 字节数据
-        msg = can.Message(
-            arbitration_id=0x0400,
-            data=bytes(raw),
-            is_extended_id=True,
-            is_fd=True,
-            dlc=16,
-        )
-        self.bus.send(msg)
+        # 向四轮 CAN ID 各发送一帧
+        for wheel, can_id in _TSYNC_CAN_IDS.items():
+            msg = can.Message(
+                arbitration_id=can_id,
+                data=bytes(raw),
+                is_extended_id=True,
+                is_fd=True,
+                dlc=64,
+            )
+            self.bus.send(msg)
 
         # 序列号递增，0~255 循环
         self._seq_counter = (self._seq_counter + 1) & 0xFF
