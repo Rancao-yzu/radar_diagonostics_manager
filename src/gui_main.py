@@ -2,6 +2,7 @@
 """雷达诊断管理 GUI —— OTA 升级 / DTC 读取清除 / 标定和标定查询（具体功能布局部分）"""
 
 import os
+import sys
 import tkinter as tk
 from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
@@ -19,6 +20,15 @@ class RadarDiagnosticsGUI:
         self.root.title("WF Radar Diagnostics Manager | ©2021 无锡威孚高科技集团股份有限公司 版权所有")
         self.root.geometry("1100x750")
         self.root.configure(bg=BG_CARD)
+
+        # 使用 iconphoto 方法设置窗口图标（跨平台兼容，Linux/Windows/macOS 均支持）
+        if getattr(sys, 'frozen', False):
+            icon_path = os.path.join(sys._MEIPASS, 'images', 'tool.png')
+        else:
+            icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'images', 'tool.png')
+        if os.path.exists(icon_path):
+            icon_img = ImageTk.PhotoImage(Image.open(icon_path))
+            self.root.iconphoto(True, icon_img)
 
         setup_styles()              # 初始化样式
         self._build_main_layout()   # 构建主布局
