@@ -196,6 +196,12 @@ class CalibrationManager:
         self._log(f"  标定结果: {RESULT_STATUS_MAP.get(cal_result, f'未知({cal_result})')}", "OK")
         self._log(f"  标定状态: {ERROR_CODE_MAP.get(error_code, f'未知({error_code})')}", "OK")
 
+        if len(data) >= 12:
+            horizontal_raw = struct.unpack('>f', data[4:8])[0]
+            vertical_raw = struct.unpack('>f', data[8:12])[0]
+            self._log(f"  水平偏差角度: {horizontal_raw:.2f}°", "OK")
+            self._log(f"  垂直偏差角度: {vertical_raw:.2f}°", "OK")
+
     def _read_cal_params(self, radar_index):
         _, radar_name, section = _RADAR_INFO[radar_index]
 
