@@ -143,11 +143,22 @@ class DTCManager:
         不匹配则丢弃该帧。
         """
         hdr = self._group1_header
+        byte_info = ' '.join(f'{i:02d}:0x{b:02X}' for i, b in enumerate(data))
+        print(f'[DTC] {node}| 原始数据: {byte_info}')   #打印原始数据，
 
         # 校验 MessageType 字段
         message_type = data[hdr['message_type_byte']]
         if message_type != hdr['message_type_fixed_value']:
             return
+
+        # 解析帧头字段
+        ts_bytes = hdr['timestamp_bytes']
+        timestamp = int.from_bytes(data[ts_bytes[0]:ts_bytes[1]+1], 'big')  # 雷达上电时间戳 (ms)
+        dtc_number = data[hdr['number_byte']]                                # DTC 数量
+        fn_bytes = hdr['frame_number_bytes']
+        frame_number = int.from_bytes(data[fn_bytes[0]:fn_bytes[1]+1], 'big')  # 消息唯一序号
+
+        print(f'[DTC] {node}| 时间戳={timestamp} | DTC数量={dtc_number} | MessageType=0x{message_type:02X} | 帧序号={frame_number}')
 
         with self._lock:
             # 遍历 GROUP1 的 5 个 DTC 条目，按配置的字节位置逐个解析
@@ -250,11 +261,11 @@ def load_dtc_config():
     # 解析 GROUP1 帧头配置节
     hdr = cfg['group1_header']
     group1_header = {
-        'timestamp_bytes': tuple(int(x) for x in hdr.get('timestamp_bytes', '54,57').split(',')),
-        'number_byte': int(hdr.get('number_byte', '53')),
-        'message_type_byte': int(hdr.get('message_type_byte', '52')),
-        'frame_number_bytes': tuple(int(x) for x in hdr.get('frame_number_bytes', '50,51').split(',')),
-        'message_type_fixed_value': int(hdr.get('message_type_fixed_value', '0x10'), 0),
+        'timestamp_bytes': tuple(int(x) for x in hdr.get('timestamp_bytes', '54,57').split(',')),# 时间戳
+        'number_byte': int(hdr.get('number_byte', '53')),# DTC 数量字节
+        'message_type_byte': int(hdr.get('message_type_byte', '52')),# 固定值应该 = 0x10, 标识DTC诊断消息
+        'frame_number_bytes': tuple(int(x) for x in hdr.get('frame_number_bytes', '50,51').split(',')),# 消息唯一序号
+        'message_type_fixed_value': int(hdr.get('message_type_fixed_value', '0x10'), 0),# 固定值0x10, 标识DTC诊断消息
     }
 
     def _parse_entries(section):
