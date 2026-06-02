@@ -22,10 +22,7 @@ class RadarDiagnosticsGUI:
         self.root.configure(bg=BG_CARD)
 
         # 使用 iconphoto 方法设置窗口图标（跨平台兼容，Linux/Windows/macOS 均支持）
-        if getattr(sys, 'frozen', False):
-            icon_path = os.path.join(sys._MEIPASS, 'images', 'tool.png')
-        else:
-            icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'images', 'tool.png')
+        icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'images', 'tool.png')
         if os.path.exists(icon_path):
             icon_img = ImageTk.PhotoImage(Image.open(icon_path))
             self.root.iconphoto(True, icon_img)

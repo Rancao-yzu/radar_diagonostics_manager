@@ -8,8 +8,6 @@ a = Analysis(
     ],
     binaries=[],
     datas=[
-        ('config/', 'config/'),           # config_c.ini / config_d.ini
-        ('images/', 'images/'),           # logo.png
         ('lib/uds/uds_communications/Uds/config.ini', 'lib/uds/uds_communications/Uds/'),  # UDS 内部 config
     ],
     hiddenimports=[
@@ -29,21 +27,49 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        'tkinter.test',                   # tkinter 测试模块
-        'unittest',                       # 单元测试框架
-        'test',                           # 通用测试模块
-        'pydoc',                          # 文档生成
-        'distutils',                      # 打包工具
-        'setuptools',                     # 安装工具
-        'pip',                            # 包管理器
-        'pkg_resources',                  # 资源管理
+        'tkinter.test',
+        'unittest',
+        'test',
+        'pydoc',
+        'distutils',
+        'setuptools',
+        'pip',
+        'pkg_resources',
+        'http',
+        'xmlrpc',
+        'wsgiref',
+        'curses',
+        'ensurepip',
+        'lib2to3',
 
-        'http',                           # HTTP 模块
-        'xmlrpc',                         # XML-RPC
-        'wsgiref',                        # WSGI
-        'curses',                         # 终端 UI
-        'ensurepip',                      # pip 引导
-        'lib2to3',                        # 2to3 转换工具
+        # ---- 新增排除：已确认可安全排除的无关模块 ----
+        'multiprocessing',                # 多进程，只用了 threading
+        'xml',                            # XML 解析（只用 configparser 读 ini）
+        'html',                           # HTML 解析
+        'gettext',                        # 国际化翻译
+        'netrc',                          # .netrc 认证
+        'ftplib',                         # FTP
+        'smtplib',                        # SMTP
+        'poplib',                         # POP3
+        'imaplib',                        # IMAP4
+        'nntplib',                        # NNTP
+        'telnetlib',                      # Telnet
+        'webbrowser',                     # 浏览器控制
+        'turtle',                         # Turtle 绘图
+        'venv',                           # 虚拟环境
+        'zipapp',                         # zipapp
+        'doctest',                        # 文档测试
+        'statistics',                     # 统计函数
+
+        # ---- pip 第三方库排除：安装了但项目完全不用的库 ----
+        'numpy',                          # 数值计算 ~50MB
+        'pandas',                         # 数据分析 ~30MB
+        'matplotlib',                     # 绑图 ~20MB
+        'contourpy',                      # matplotlib 依赖
+        'cycler',                         # matplotlib 依赖
+        'fonttools',                      # matplotlib 依赖
+        'kiwisolver',                     # matplotlib 依赖
+        'pyparsing',                      # matplotlib 依赖
     ],
     noarchive=False,
     optimize=0,
@@ -66,6 +92,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='images\\tool.ico',
 )
 coll = COLLECT(
     exe,
