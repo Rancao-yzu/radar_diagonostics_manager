@@ -253,6 +253,7 @@ class RadarDiagnosticsGUI:
             self.dtc_status_var.set("● 未接收")
 
     def dtc_update_table(self, all_entries):
+        """更新 DTC 表格数据"""
         for item in self.dtc_tree.get_children():
             self.dtc_tree.delete(item)
 

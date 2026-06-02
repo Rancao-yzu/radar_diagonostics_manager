@@ -208,7 +208,6 @@ class Application:
         if self._dtc_mgr is not None:
             self._dtc_mgr.stop()
         self.gui.dtc_set_buttons_state(False)
-        self.gui.dtc_update_table(None)
 
     def _dtc_refresh_table(self):
         if self._dtc_mgr is not None and self._dtc_mgr.is_running():
