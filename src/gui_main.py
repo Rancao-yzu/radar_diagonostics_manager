@@ -375,8 +375,8 @@ class RadarDiagnosticsGUI:
                  fg=TEXT_DARK, bg=BG_CARD).pack(side=tk.LEFT)
 
         # 下载日志按钮
-        self.btn_download_log = _FlatButton(header, text="↓", bg=ORANGE_PRIMARY,
-                                            hover=ORANGE_ACCENT, width=24, height=20)
+        self.btn_download_log = _FlatButton(header, text="Download Log", bg=ORANGE_PRIMARY,
+                                            hover=ORANGE_ACCENT, width=108, height=32)
         self.btn_download_log.pack(side=tk.LEFT, padx=(6, 0))
 
         # 时间同步勾选框（最右侧）
