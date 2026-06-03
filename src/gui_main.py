@@ -358,11 +358,41 @@ class RadarDiagnosticsGUI:
                                        fg=ORANGE_PRIMARY, hover=ORANGE_LIGHT, width=130, height=32)
         self.btn_clear_4.pack(side=tk.LEFT)
 
+        # OA 结果接收
+        section_oa = ttk.LabelFrame(inner, text="OA 结果接收", style='Card.TLabelframe')
+        section_oa.pack(fill=tk.X, pady=(8, 0))
+
+        oa_inner = tk.Frame(section_oa, bg=BG_CARD)
+        oa_inner.pack(fill=tk.X, padx=CARD_PAD[0], pady=CARD_PAD[1])
+
+        self.btn_oa_start = _FlatButton(oa_inner, text="OA结果接收", bg=ORANGE_PRIMARY,
+                                        hover=ORANGE_ACCENT, width=100, height=32)
+        self.btn_oa_start.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_oa_stop = _FlatButton(oa_inner, text="OA结果停止接收", bg="#FFD8D8",
+                                        fg=ORANGE_PRIMARY, hover=ORANGE_LIGHT, width=130, height=32)
+        self.btn_oa_stop.pack(side=tk.LEFT)
+        self.btn_oa_stop.set_enabled(False)
+
+        self.oa_status_var = tk.StringVar(value="● 未接收")
+        tk.Label(oa_inner, textvariable=self.oa_status_var,
+                 font=('Microsoft YaHei', 9), fg=ORANGE_ACCENT, bg=BG_CARD).pack(side=tk.LEFT, padx=(10, 0))
+
     def _set_cal_buttons_state(self, state):
         """设置 标定和标定查询 操作按钮状态"""
         for i in range(1, 5):
             for prefix in ('btn_static_', 'btn_param_', 'btn_clear_'):
                 getattr(self, prefix + str(i)).configure(state=state)
+
+    def oa_set_buttons_state(self, running):
+        """设置 OA 结果接收按钮状态"""
+        if running:
+            self.btn_oa_start.set_enabled(False)
+            self.btn_oa_stop.set_enabled(True)
+            self.oa_status_var.set("● 接收中")
+        else:
+            self.btn_oa_start.set_enabled(True)
+            self.btn_oa_stop.set_enabled(False)
+            self.oa_status_var.set("● 未接收")
 
     def _build_log_area(self):
         """构建日志区域：显示 CAN 通讯日志"""

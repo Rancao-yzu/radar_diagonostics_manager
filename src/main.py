@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(_BASE_DIR, 'lib'))
 
 from gui_main import RadarDiagnosticsGUI
 from can_config import check_can_interfaces
-from calibration import CalibrationManager, _load_can_ids
+from calibration import CalibrationManager, _load_can_ids, OAResultReceiver
 from sync import TimeSyncManager
 from dtc import DTCManager, load_dtc_config
 import can
@@ -32,6 +32,7 @@ class Application:
         self._sync_timer_id = None
         self._dtc_mgr = None
         self._dtc_refresh_id = None
+        self._oa_mgr = None
 
         self._bind_events()
 
@@ -69,6 +70,10 @@ class Application:
         # DTC 按钮
         self.gui.btn_dtc_start._command = self._on_dtc_start
         self.gui.btn_dtc_stop._command = self._stop_dtc
+
+        # OA 结果接收按钮
+        self.gui.btn_oa_start._command = self._on_oa_start
+        self.gui.btn_oa_stop._command = self._stop_oa
 
         # 窗口关闭回调
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -171,6 +176,10 @@ class Application:
         # 配置 CAN 总线过滤器，DTC 相关 CAN ID
         for key, can_id in dtc_ids.items():
             filters.append({"can_id": can_id, "can_mask": 0x7FF, "extended": False})
+            
+        # OA 结果 CAN ID
+        for oa_id in (1502, 1470, 1454, 1486):
+            filters.append({"can_id": oa_id, "can_mask": 0x7FF, "extended": False})
         self.gui.log(f"[INFO] CAN 总线过滤器: {filters}", "INFO")
         
         # 连接 CAN 总线，整个项目的唯一实例!!!!
@@ -188,6 +197,8 @@ class Application:
         self._stop_time_sync()
         self._stop_dtc()
         self._dtc_mgr = None
+        self._stop_oa()
+        self._oa_mgr = None
         self.gui.time_sync_var.set(False)
         self.gui.set_connection_status(True)
         self.gui.log(f"[OK] 已连接 — Channel: {channel}, Bitrate: {bitrate}, Data Bitrate: {data_bitrate}", "OK")
@@ -195,9 +206,26 @@ class Application:
     def _on_close(self):
         self._stop_time_sync()
         self._stop_dtc()
+        self._stop_oa()
         if self._bus is not None:
             self._bus.shutdown()
         self.root.destroy()
+
+    def _on_oa_start(self):
+        """启动 OA 结果接收器 按钮的实例"""
+        if self._bus is None:
+            self.gui.log('[OA WARN] 请先连接 CAN 总线', 'ERROR')
+            return
+        if self._oa_mgr is None:
+            self._oa_mgr = OAResultReceiver(self._bus, log_callback=self.gui.log)
+        self._oa_mgr.start()
+        self.gui.oa_set_buttons_state(True)
+
+    def _stop_oa(self):
+        """停止 OA 结果接收器 按钮的实例"""
+        if self._oa_mgr is not None:
+            self._oa_mgr.stop()
+        self.gui.oa_set_buttons_state(False)
 
     def _on_dtc_start(self):
         """启动 DTC 管理器 按钮的实例"""
