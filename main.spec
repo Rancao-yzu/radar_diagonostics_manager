@@ -44,9 +44,6 @@ a = Analysis(
 
         # ---- 新增排除：已确认可安全排除的无关模块 ----
         'multiprocessing',                # 多进程，只用了 threading
-        'xml',                            # XML 解析（只用 configparser 读 ini）
-        'html',                           # HTML 解析
-        'gettext',                        # 国际化翻译
         'netrc',                          # .netrc 认证
         'ftplib',                         # FTP
         'smtplib',                        # SMTP
