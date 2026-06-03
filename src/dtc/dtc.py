@@ -202,23 +202,6 @@ class DTCManager:
                 entry['status_mask_labels'] = self.resolve_status_mask(entry.get('status_mask', 0))
         return data
 
-    def get_node_data(self, node):
-        """获取指定雷达节点的 DTC 数据（线程安全）
-
-        Args:
-            node: 雷达节点缩写，如 'FL', 'FR', 'RL', 'RR'
-
-        Returns:
-            list: 该节点的 DTC 条目列表
-        """
-        import copy
-        with self._lock:
-            data = copy.deepcopy(self._all_entries.get(node, []))
-        for entry in data:
-            entry['dtc_type_labels'] = self.resolve_dtc_type(entry.get('dtc_type', 0))
-            entry['status_mask_labels'] = self.resolve_status_mask(entry.get('status_mask', 0))
-        return data
-
     def resolve_dtc_type(self, dtc_type_byte):
         """解析 dtc_type 字节，返回各 bit 的含义列表（从 config 读取）"""
         results = []

@@ -235,8 +235,8 @@ class RadarDiagnosticsGUI:
         col_widths = {'node': 80, 'group': 60, 'entry': 60, 'status_mask': 90, 'dtc_type': 160, 'dtc_num': 120, 'change_ts': 120}
         col_labels = {'node': '节点', 'group': '组', 'entry': '条目', 'status_mask': 'StatusMask', 'dtc_type': 'DTC类型', 'dtc_num': 'DTC码', 'change_ts': '变化时间戳(ms)'}
         for col in columns:
-            self.dtc_tree.heading(col, text=col_labels.get(col, col))
-            self.dtc_tree.column(col, width=col_widths.get(col, 100), anchor=tk.CENTER)
+            self.dtc_tree.heading(col, text=col_labels.get(col, col))   # 设置列标题
+            self.dtc_tree.column(col, width=col_widths.get(col, 100), anchor=tk.CENTER)   # 设置列宽度
 
         tree_scroll = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=self.dtc_tree.yview)
         self.dtc_tree.configure(yscrollcommand=tree_scroll.set)
@@ -250,6 +250,7 @@ class RadarDiagnosticsGUI:
         self._dtc_refresh_id = None
 
     def dtc_set_buttons_state(self, running):
+        """设置 DTC 操作按钮状态"""
         if running:
             self.btn_dtc_start.set_enabled(False)
             self.btn_dtc_stop.set_enabled(True)
@@ -269,11 +270,13 @@ class RadarDiagnosticsGUI:
 
         row_idx = 0
         for node in ['FL', 'FR', 'RL', 'RR']:
+            # 遍历每个节点的 DTC 条目
             entries = all_entries.get(node, [])
             for entry in entries:
-                dtc_type_str = ','.join(entry.get('dtc_type_labels', []))
-                status_str = ','.join(entry.get('status_mask_labels', []))
-                tag = 'even_row' if row_idx % 2 == 0 else 'odd_row'
+                # 遍历每个 DTC 条目
+                dtc_type_str = ','.join(entry.get('dtc_type_labels', []))# 合并 DTC 类型标签
+                status_str = ','.join(entry.get('status_mask_labels', []))# 合并 StatusMask 标签
+                tag = 'even_row' if row_idx % 2 == 0 else 'odd_row'# 根据行索引选择偶数行或奇数行标签
                 self.dtc_tree.insert('', tk.END, values=(
                     node,
                     entry.get('group', ''),
@@ -356,6 +359,7 @@ class RadarDiagnosticsGUI:
         self.btn_clear_4.pack(side=tk.LEFT)
 
     def _set_cal_buttons_state(self, state):
+        """设置 标定和标定查询 操作按钮状态"""
         for i in range(1, 5):
             for prefix in ('btn_static_', 'btn_param_', 'btn_clear_'):
                 getattr(self, prefix + str(i)).configure(state=state)
@@ -395,6 +399,7 @@ class RadarDiagnosticsGUI:
 
         for label, color in [("SEND", LOG_COLORS["SEND"]), ("RECV", LOG_COLORS["RECV"]),
                              ("ERROR", LOG_COLORS["ERROR"]), ("OK", LOG_COLORS["OK"])]:
+            # 构建日志颜色图例
             dot = tk.Frame(legend, bg=color, width=8, height=8)
             dot.pack(side=tk.LEFT, padx=(2, 4))
             tk.Label(legend, text=label, font=('Microsoft YaHei', 10),
@@ -403,6 +408,7 @@ class RadarDiagnosticsGUI:
         text_frame = tk.Frame(inner, bg=BG_CARD)
         text_frame.pack(fill=tk.BOTH, expand=True)
 
+        # 日志文本框
         self.log_text = tk.Text(text_frame, wrap=tk.WORD, state=tk.DISABLED,
                                 font=("Consolas", 10), bg='#FAFAFA', fg=TEXT_DARK,
                                 bd=1, relief='solid', highlightthickness=0,
@@ -415,13 +421,16 @@ class RadarDiagnosticsGUI:
         log_scroll.pack(side=tk.RIGHT, fill=tk.Y)
 
         for tag, color in LOG_COLORS.items():
+            # 配置日志标签颜色
             self.log_text.tag_config(tag, foreground=color)
 
     def _hide_all_panels(self):
+        """隐藏所有面板"""
         for panel in [self.ota_panel, self.dtc_panel, self.cal_panel]:
             panel.pack_forget()
 
     def _show_ota_panel(self):
+        """显示 OTA 操作面板"""
         self._hide_all_panels()
         self.ota_panel.pack(fill=tk.BOTH, expand=True)
         self.btn_ota.set_active(True)
@@ -429,6 +438,7 @@ class RadarDiagnosticsGUI:
         self.btn_cal.set_active(False)
 
     def _show_dtc_panel(self):
+        """显示 DTC 操作面板"""
         self._hide_all_panels()
         self.dtc_panel.pack(fill=tk.BOTH, expand=True)
         self.btn_dtc.set_active(True)
@@ -436,6 +446,7 @@ class RadarDiagnosticsGUI:
         self.btn_cal.set_active(False)
 
     def _show_cal_panel(self):
+        """显示 标定和标定查询 操作面板"""
         self._hide_all_panels()
         self.cal_panel.pack(fill=tk.BOTH, expand=True)
         self.btn_cal.set_active(True)
@@ -445,11 +456,13 @@ class RadarDiagnosticsGUI:
     # ---- 外部接口 ----
 
     def set_channel_list(self, channels):
+        """设置 CAN 通道列表"""
         self.channel_combo["values"] = channels
         if channels and not self.channel_var.get():
             self.channel_var.set(channels[0])
 
     def set_connection_status(self, connected):
+        """设置连接状态显示"""
         if connected:
             self.conn_status_var.set("●  已连接")
             self.conn_status_label.configure(fg="#2E7D32")
@@ -462,6 +475,7 @@ class RadarDiagnosticsGUI:
         return self.channel_var.get(), self.bitrate_var.get(), self.data_bitrate_var.get()
 
     def get_channel_number(self):
+        """获取当前选择的 CAN 通道编号"""
         channel_str = self.channel_var.get()
         return channel_str.split(":")[0].strip() if channel_str else ""
 

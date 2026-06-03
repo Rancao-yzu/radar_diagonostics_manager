@@ -74,6 +74,7 @@ class Application:
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _get_cal_mgr(self):
+        """懒加载标定管理器，未连接时提示并返回 None"""
         if self._cal_mgr is None:
             if self._bus is None:
                 self.gui.log("[WARN] 请先点击连接按钮", "ERROR")
@@ -98,7 +99,7 @@ class Application:
             self._stop_time_sync()
 
     def _start_time_sync(self):
-        """每 1 秒发送一次时间同步帧，通过 after 递归调度"""
+        """每 X 秒发送一次时间同步帧，通过 after 递归调度"""
         mgr = self._get_sync_mgr()
         if mgr is None:
             self.gui.time_sync_var.set(False)
@@ -121,18 +122,21 @@ class Application:
         self.root.after(1500, lambda: self.gui._set_cal_buttons_state(tk.NORMAL))
 
     def _on_static_cal(self, radar_index):
+        """静态标定 按钮的实例"""
         mgr = self._get_cal_mgr()
         if mgr is None:
             return
         mgr.static_calibration(radar_index)
 
     def _on_send_params(self, radar_index):
+        """发送参数 按钮的实例"""
         mgr = self._get_cal_mgr()
         if mgr is None:
             return
         mgr.send_params(radar_index)
 
     def _on_clear_params(self, radar_index):
+        """清除参数 按钮的实例"""
         mgr = self._get_cal_mgr()
         if mgr is None:
             return
@@ -151,6 +155,7 @@ class Application:
             self.gui.log("[INFO] CAN 总线已断开", "INFO")
         
         ids = _load_can_ids()
+        # 配置 CAN 总线过滤器，标定相关 CAN ID
         filters = [
             {"can_id": ids['left_front_static_recv'], "can_mask": 0x7FF, "extended": False},
             {"can_id": ids['right_front_static_recv'], "can_mask": 0x7FF, "extended": False},
@@ -163,10 +168,12 @@ class Application:
         ]
 
         dtc_ids = load_dtc_config()['can_ids']
+        # 配置 CAN 总线过滤器，DTC 相关 CAN ID
         for key, can_id in dtc_ids.items():
             filters.append({"can_id": can_id, "can_mask": 0x7FF, "extended": False})
         self.gui.log(f"[INFO] CAN 总线过滤器: {filters}", "INFO")
         
+        # 连接 CAN 总线，整个项目的唯一实例!!!!
         self._bus = can.interface.Bus(
             interface="kvaser",
             channel=self.gui.get_channel_number(),
@@ -175,6 +182,7 @@ class Application:
             fd=True,
             can_filters=filters,
         )
+        # 重置各种管理器和实例状态
         self._cal_mgr = None
         self._sync_mgr = None
         self._stop_time_sync()
@@ -192,6 +200,7 @@ class Application:
         self.root.destroy()
 
     def _on_dtc_start(self):
+        """启动 DTC 管理器 按钮的实例"""
         if self._bus is None:
             self.gui.log('[DTC WARN] 请先连接 CAN 总线', 'ERROR')
             return
@@ -202,6 +211,7 @@ class Application:
         self._dtc_refresh_table()
 
     def _stop_dtc(self):
+        """停止 DTC 管理器 按钮的实例"""
         if self._dtc_refresh_id is not None:
             self.root.after_cancel(self._dtc_refresh_id)
             self._dtc_refresh_id = None
@@ -210,6 +220,7 @@ class Application:
         self.gui.dtc_set_buttons_state(False)
 
     def _dtc_refresh_table(self):
+        """刷新 DTC 表格数据"""
         if self._dtc_mgr is not None and self._dtc_mgr.is_running():
             data = self._dtc_mgr.get_all_data()
             self.gui.dtc_update_table(data)
