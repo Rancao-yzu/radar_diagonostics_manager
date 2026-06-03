@@ -61,9 +61,6 @@ class Application:
         self.gui.btn_clear_3.configure(command=lambda: self._cal_action(self._on_clear_params, 3))
         self.gui.btn_clear_4.configure(command=lambda: self._cal_action(self._on_clear_params, 4))
 
-        # 日志下载按钮
-        self.gui.btn_download_log.configure(command=self.gui.download_log)
-
         # 时间同步复选框
         self.gui.chk_time_sync.configure(command=self._on_time_sync_toggle)
 
@@ -207,6 +204,7 @@ class Application:
         self._stop_time_sync()
         self._stop_dtc()
         self._stop_oa()
+        self.gui.download_log()  # 关闭前自动保存日志
         if self._bus is not None:
             self._bus.shutdown()
         self.root.destroy()

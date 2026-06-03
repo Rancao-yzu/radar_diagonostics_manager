@@ -4,7 +4,7 @@
 import os
 import sys
 import tkinter as tk
-from tkinter import ttk, filedialog
+from tkinter import ttk
 from PIL import Image, ImageTk
 
 from gui_styles import (ORANGE_PRIMARY, ORANGE_LIGHT, BG_CARD, TEXT_DARK,ORANGE_ACCENT, 
@@ -70,7 +70,7 @@ class RadarDiagnosticsGUI:
         header = tk.Frame(self.sidebar, bg=BG_CARD)
         header.pack(fill=tk.X, pady=(4, 12))
 
-        tk.Label(header, text=" 雷达诊断管理 V1.0", font=('Microsoft YaHei', 12, 'bold'),
+        tk.Label(header, text=" 雷达诊断管理 V1.2", font=('Microsoft YaHei', 12, 'bold'),
                  fg=ORANGE_PRIMARY, bg=BG_CARD).pack(anchor=tk.W)
 
         tk.Frame(self.sidebar, bg=ORANGE_LIGHT, height=1).pack(fill=tk.X, pady=(0, 12))
@@ -408,11 +408,6 @@ class RadarDiagnosticsGUI:
         tk.Label(header, text="通讯日志", font=('Microsoft YaHei', 10, 'bold'),
                  fg=TEXT_DARK, bg=BG_CARD).pack(side=tk.LEFT)
 
-        # 下载日志按钮
-        self.btn_download_log = _FlatButton(header, text="Download Log", bg=ORANGE_PRIMARY,
-                                            hover=ORANGE_ACCENT, width=108, height=32)
-        self.btn_download_log.pack(side=tk.LEFT, padx=(6, 0))
-
         # 时间同步勾选框（最右侧）
         self.time_sync_var = tk.BooleanVar()
         self.chk_time_sync = tk.Checkbutton(header, text="时间同步",
@@ -519,14 +514,12 @@ class RadarDiagnosticsGUI:
         self.log_text.configure(state=tk.DISABLED)
 
     def download_log(self):
-        """导出日志到文件"""
-        filepath = filedialog.asksaveasfilename(
-            defaultextension=".log",
-            filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
-        )
-        if not filepath:
-            return
-        content = self.log_text.get("1.0", tk.END)
-        with open(filepath, "w", encoding="utf-8") as f:
+        """自动保存日志到 OUT/ 目录，文件名为年月日时分秒.log"""
+        from datetime import datetime
+        out_dir = os.path.join(os.getcwd(), 'OUT')
+        os.makedirs(out_dir, exist_ok=True)
+        filename = datetime.now().strftime('%Y%m%d%H%M%S') + '.log'
+        filepath = os.path.join(out_dir, filename)
+        content = self.log_text.get('1.0', tk.END)
+        with open(filepath, 'w', encoding='utf-8') as f:
             f.write(content)
-        self.log(f"[INFO] 日志已保存至: {filepath}", "OK")
