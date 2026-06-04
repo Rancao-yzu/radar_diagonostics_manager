@@ -152,7 +152,7 @@ class CalibrationManager:
         recv_id = self._can_ids[f'{key}_static_recv']
         self._log(f"[INFO] 开始{radar_name}静态标定...", "INFO")
 
-        resp = self._send_and_wait(send_id, [0x02], recv_id, [0x02, 0x01], CAL_TIMEOUT_PARAM, keep_alive_data=[0x00])
+        resp = self._send_and_wait(send_id, [0x02], recv_id, [0x02, 0x01], CAL_TIMEOUT_PARAM)
         if resp is None:
             self._log(f"[ERROR] {radar_name}静态标定启动失败", "ERROR")
             self._log("", "INFO")
@@ -256,7 +256,7 @@ class CalibrationManager:
         data = [0x01] + list(packed) + [0x00] * 35
 
         self._log(f"[INFO] 向{radar_name}下发标定参数...", "INFO")
-        resp = self._send_and_wait(send_id, data, recv_id, [0x01, 0x01], CAL_TIMEOUT_PARAM)
+        resp = self._send_and_wait(send_id, data, recv_id, [0x01, 0x01], CAL_TIMEOUT_PARAM*2)
         if resp is None:
             self._log(f"[ERROR] {radar_name}参数下发失败", "ERROR")
             self._log("", "INFO")
@@ -273,7 +273,7 @@ class CalibrationManager:
         recv_id = self._can_ids[f'{key}_param_recv']
 
         self._log(f"[INFO] 清除{radar_name}标定参数...", "INFO")
-        resp = self._send_and_wait(send_id, [0x02], recv_id, [0x02, 0x01], CAL_TIMEOUT_PARAM)
+        resp = self._send_and_wait(send_id, [0x02], recv_id, [0x02, 0x01], CAL_TIMEOUT_PARAM*2)
         if resp is None:
             self._log(f"[ERROR] {radar_name}参数清除失败", "ERROR")
             self._log("", "INFO")
