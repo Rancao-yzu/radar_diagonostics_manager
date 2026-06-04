@@ -21,7 +21,7 @@ ISOTP_PARAMS = {
     "override_receiver_stmin": 0.0001,
     "blocksize": 8,
     "wftmax": 0,
-    "tx_data_length": 8,
+    "tx_data_length": 64,
     "tx_data_min_length": 8,
     "tx_padding": 0,
     "rx_flowcontrol_timeout": 5000,
@@ -43,8 +43,6 @@ FORCEJUMP_DATA = [0x02, 0x10, 0x60,
                   0xA5, 0xB6, 0xC7, 0xD8]
 
 # 固件起始地址和文件路径（根据实际情况修改）
-FLASH_START_ADDR = 0x00090000
-FLASH_ERASE_SIZE = 0x2000
 HEX_FILE_PATH = "data.hex"
 
 
@@ -118,7 +116,7 @@ def step_d1_request_download(canUds, address, length):
     return max_block
 
 
-def step_d2_transfer_data(canUds, file_data, chunk_size):
+def step_d2_transfer_data_old(canUds, file_data, chunk_size):
     """D2: 传输数据块"""
     total_len = len(file_data)
     block_count = 0
@@ -133,6 +131,12 @@ def step_d2_transfer_data(canUds, file_data, chunk_size):
         if block_count % 10 == 0 or offset + chunk_size >= total_len:
             print(f"[D2] 传输进度: {min(offset + chunk_size, total_len)}/{total_len}")
     print(f"[D2] 数据传输完成 共 {block_count} 块")
+
+def step_d2_transfer_data(canUds, file_data, chunk_size):
+    """D2: 传输数据块"""
+    total_len = len(file_data)
+    canUds.transferFile(file_data, chunk_size=chunk_size, )
+    print(f"[D2] 数据传输完成 共 {total_len // chunk_size + (1 if total_len % chunk_size else 0)} 块")
 
 
 def step_d3_transfer_exit(canUds):
@@ -189,7 +193,6 @@ def main():
 
         with open(HEX_FILE_PATH, "rb") as f:
             file_data = f.read()
-        flash_size = len(file_data)
         #读取Hex文件
         ihObj = IntelHex(HEX_FILE_PATH)
         segments = ihObj.segments()
@@ -224,13 +227,13 @@ def main():
         time.sleep(0.1)
 
         # ---- C: 擦除目标区域 ----
-        step_c_erase(canUds, FLASH_START_ADDR, FLASH_ERASE_SIZE)
+        step_c_erase(canUds, start_address_bytes, file_size_bytes)
 
         # ---- D: 下载与传输 ----
         max_block = step_d1_request_download(canUds, start_address_bytes, file_size_bytes)
 
         # 根据 MaxBlock 使用合适的块大小（留出序列号+服务ID的头部空间）
-        chunk_size = min(max_block - 2, 4094)
+        chunk_size = min(max_block - 2, 4093)  # ISO-TP 最大数据长度为 4095，减去头部2字节
         step_d2_transfer_data(canUds, file_data, chunk_size)
 
         step_d3_transfer_exit(canUds)
