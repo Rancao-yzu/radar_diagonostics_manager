@@ -3,7 +3,7 @@ import os
 if getattr(sys, 'frozen', False):
     _BASE_DIR = sys._MEIPASS
 else:
-    _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    _BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(_BASE_DIR, 'lib'))
 
 import can
@@ -43,7 +43,9 @@ FORCEJUMP_DATA = [0x02, 0x10, 0x60,
                   0xA5, 0xB6, 0xC7, 0xD8]
 
 # 固件起始地址和文件路径（根据实际情况修改）
-HEX_FILE_PATH = "data.hex"
+FLASH_START_ADDR = 0x00090000
+FLASH_ERASE_SIZE = 0x2000
+HEX_FILE_PATH = "/home/zjh/桌面/docx/mss_dss_rss_h_1M_padding.hex"
 
 
 def uds_send(canUds, service, params, confirm=None, timeout=2.0):
