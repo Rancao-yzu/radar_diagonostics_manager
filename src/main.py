@@ -66,7 +66,6 @@ class Application:
 
         # DTC 按钮
         self.gui.btn_dtc_start._command = self._on_dtc_start
-        self.gui.btn_dtc_stop._command = self._stop_dtc
 
         # OA 结果接收按钮
         self.gui.btn_oa_start._command = self._on_oa_start
@@ -235,6 +234,8 @@ class Application:
         self._dtc_mgr.start()
         self.gui.dtc_set_buttons_state(True)
         self._dtc_refresh_table()
+        # 2 秒后自动关闭
+        self.root.after(2000, self._stop_dtc)
 
     def _stop_dtc(self):
         """停止 DTC 管理器 按钮的实例"""

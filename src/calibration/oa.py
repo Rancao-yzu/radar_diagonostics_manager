@@ -28,7 +28,15 @@ class OAResultReceiver:
         self.log_callback = log_callback
         self._running = False
         self._thread = None
-        self._db = cantools.database.load_file(_DBC_PATH)
+        db = cantools.database.load_file(_DBC_PATH)
+        # 预缓存 4 个关心的 CAN ID 对应的 message 对象，避免每次解码时遍历整个 DBC
+        self._msg_cache = {}
+        for can_id in _OA_CAN_IDS:
+            try:
+                self._msg_cache[can_id] = db.get_message_by_frame_id(can_id)
+                self._log(f'[OA] 缓存 message {self._msg_cache[can_id]}')
+            except Exception as e:
+                self._log(f'[OA WARN] DBC 中未找到 CAN ID=0x{can_id:03X}: {e}')
 
     def _log(self, msg, tag='INFO'):
         """日志记录器"""
@@ -69,15 +77,17 @@ class OAResultReceiver:
                 continue
 
             can_id = msg.arbitration_id
-            node = _OA_CAN_IDS.get(can_id)
-            if node is None:
+            cached_msg = self._msg_cache.get(can_id)
+            if cached_msg is None:
                 continue
 
             try:
-                decoded = self._db.decode_message(can_id, msg.data)
+                decoded = cached_msg.decode(msg.data)
             except Exception as e:
                 print(f'[OA ERROR] DBC 解析失败 can_id=0x{can_id:03X}: {e}')
                 continue
+
+            node = _OA_CAN_IDS[can_id]  # cached_msg 已确保 can_id 在映射中
 
             # 按逻辑分组输出核心信号
             parts = [f'[OA] {node}']

@@ -167,7 +167,7 @@ class CalibrationManager:
             if recv is None:
                 continue
 
-            self._log(f"[RECV] ID=0x{recv.arbitration_id:03X} Data={[hex(b) for b in recv.data]}", "RECV")
+            #self._log(f"[RECV] ID=0x{recv.arbitration_id:03X} Data={[hex(b) for b in recv.data]}", "RECV")
 
             if recv.arbitration_id != recv_id or len(recv.data) < 3 or recv.data[0] != 0x04:
                 continue

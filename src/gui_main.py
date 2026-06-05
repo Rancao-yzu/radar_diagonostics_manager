@@ -113,7 +113,7 @@ class RadarDiagnosticsGUI:
                  fg=ORANGE_ACCENT, bg=BG_CARD).grid(row=0, column=0, sticky=tk.W, pady=4, padx=(0, 8))
         self.channel_var = tk.StringVar()
         self.channel_combo = ttk.Combobox(grid, textvariable=self.channel_var,
-                                          width=30, state="readonly")
+                                          width=45, state="readonly")
         self.channel_combo.grid(row=0, column=1, sticky=tk.W, pady=4, padx=(0, 20))
 
         # 波特率选择
@@ -217,10 +217,7 @@ class RadarDiagnosticsGUI:
                                          hover=ORANGE_ACCENT, width=100, height=32)
         self.btn_dtc_start.pack(side=tk.LEFT, padx=(0, 10))
 
-        self.btn_dtc_stop = _FlatButton(btn_frame, text="停止接收", bg="#FFD8D8",
-                                        fg=ORANGE_PRIMARY, hover=ORANGE_LIGHT, width=100, height=32)
-        self.btn_dtc_stop.pack(side=tk.LEFT, padx=(0, 10))
-        self.btn_dtc_stop.set_enabled(False)
+
 
         self.dtc_status_var = tk.StringVar(value="● 未接收")
         tk.Label(btn_frame, textvariable=self.dtc_status_var,
@@ -253,11 +250,9 @@ class RadarDiagnosticsGUI:
         """设置 DTC 操作按钮状态"""
         if running:
             self.btn_dtc_start.set_enabled(False)
-            self.btn_dtc_stop.set_enabled(True)
             self.dtc_status_var.set("● 接收中")
         else:
             self.btn_dtc_start.set_enabled(True)
-            self.btn_dtc_stop.set_enabled(False)
             self.dtc_status_var.set("● 未接收")
 
     def dtc_update_table(self, all_entries):
