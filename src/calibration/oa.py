@@ -94,6 +94,9 @@ class OAResultReceiver:
             for name, val in decoded.items():
                 # 去掉 RSDS_XX_ 前缀，精简显示
                 short = name.split('_', 2)[-1] if name.startswith('RSDS_') else name
+                # EleOffset / AziOffset 弧度转角度
+                if ('EleOffset' in name or 'AziOffset' in name) and isinstance(val, (int, float)):
+                    val = round(val * 180.0 / 3.141, 4)
                 if isinstance(val, float):
                     parts.append(f'{short}={val:.4f}')
                 else:

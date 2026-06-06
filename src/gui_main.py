@@ -70,7 +70,7 @@ class RadarDiagnosticsGUI:
         header = tk.Frame(self.sidebar, bg=BG_CARD)
         header.pack(fill=tk.X, pady=(4, 12))
 
-        tk.Label(header, text=" 雷达诊断管理 V1.2", font=('Microsoft YaHei', 12, 'bold'),
+        tk.Label(header, text=" 雷达诊断管理 V1.3.1", font=('Microsoft YaHei', 12, 'bold'),
                  fg=ORANGE_PRIMARY, bg=BG_CARD).pack(anchor=tk.W)
 
         tk.Frame(self.sidebar, bg=ORANGE_LIGHT, height=1).pack(fill=tk.X, pady=(0, 12))
