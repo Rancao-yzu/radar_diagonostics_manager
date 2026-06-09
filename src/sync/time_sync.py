@@ -66,12 +66,15 @@ class TimeSyncManager:
         raw[16:64] = b'\x00' * 48
 
         # Byte0~1 — TSYNC_CRC（2 字节，大端序 u16）
-        # CRC 校验范围：Byte2~Byte63（除 CRC 字段外的其它有效数据）
-        crc = _crc16_ccitt(bytes(raw[2:64]))
+        # CRC 校验范围：整帧除CRC以外的14个字节全部参与运算
+        crc = _crc16_ccitt(bytes(raw[2:16]))
         struct.pack_into('>H', raw, 0, crc)
 
-        self._log(f"[SYNC] 发送时间同步帧 seq={self._seq_counter} "
-                  f"s={seconds} ns={nanos} crc=0x{crc:04X}", "SEND")
+        # print(f"[SYNC] 发送时间同步帧 seq={self._seq_counter} "
+        #           f"s={seconds} ns={nanos} crc=0x{crc:04X}")
+        
+        # self._log(f"[SYNC] 发送时间同步帧 seq={self._seq_counter} "
+        #     f"s={seconds} ns={nanos} crc=0x{crc:04X}", "SEND")
 
         # 向四轮 CAN ID 各发送一帧
         for wheel, can_id in _TSYNC_CAN_IDS.items():
@@ -87,5 +90,3 @@ class TimeSyncManager:
         # 序列号递增，0~255 循环
         self._seq_counter = (self._seq_counter + 1) & 0xFF
 
-        # 帧末尾输出空行，利于 GUI 日志阅读
-        self._log("", "INFO")

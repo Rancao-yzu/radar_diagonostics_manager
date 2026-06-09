@@ -70,8 +70,8 @@ class RadarDiagnosticsGUI:
         header = tk.Frame(self.sidebar, bg=BG_CARD)
         header.pack(fill=tk.X, pady=(4, 12))
 
-        tk.Label(header, text=" 雷达诊断管理 V1.3.1", font=('Microsoft YaHei', 12, 'bold'),
-                 fg=ORANGE_PRIMARY, bg=BG_CARD).pack(anchor=tk.W)
+        tk.Label(header, text=" 雷达诊断管理 V1.3.2", font=('Microsoft YaHei', 12, 'bold italic'),
+                        fg=ORANGE_ACCENT, bg=BG_CARD).pack(anchor=tk.W)
 
         tk.Frame(self.sidebar, bg=ORANGE_LIGHT, height=1).pack(fill=tk.X, pady=(0, 12))
 
@@ -216,8 +216,6 @@ class RadarDiagnosticsGUI:
         self.btn_dtc_start = _FlatButton(btn_frame, text="开始接收", bg=ORANGE_PRIMARY,
                                          hover=ORANGE_ACCENT, width=100, height=32)
         self.btn_dtc_start.pack(side=tk.LEFT, padx=(0, 10))
-
-
 
         self.dtc_status_var = tk.StringVar(value="● 未接收")
         tk.Label(btn_frame, textvariable=self.dtc_status_var,

@@ -96,8 +96,10 @@ class Application:
         """勾选框状态变化回调：勾选 → 启动定时发送，取消 → 停止"""
         if self.gui.time_sync_var.get():
             self._start_time_sync()
+            self.gui.log("[INFO] 时间同步已启动", "OK")
         else:
             self._stop_time_sync()
+            self.gui.log("[INFO] 时间同步已停止", "OK")
 
     def _start_time_sync(self):
         """每 X 秒发送一次时间同步帧，通过 after 递归调度"""
