@@ -498,13 +498,15 @@ class RadarDiagnosticsGUI:
         return channel_str.split(":")[0].strip() if channel_str else ""
 
     def log(self, message, tag="INFO"):
-        """将日志消息添加到文本框中"""
+        """将日志消息添加到文本框中（线程安全）"""
         from datetime import datetime
         ts = datetime.now().strftime("%H:%M:%S")
-        self.log_text.configure(state=tk.NORMAL)
-        self.log_text.insert(tk.END, f"[{ts}]-- {message}\n", tag)
-        self.log_text.see(tk.END)
-        self.log_text.configure(state=tk.DISABLED)
+        def _write():
+            self.log_text.configure(state=tk.NORMAL)
+            self.log_text.insert(tk.END, f"[{ts}]-- {message}\n", tag)
+            self.log_text.see(tk.END)
+            self.log_text.configure(state=tk.DISABLED)
+        self.root.after_idle(_write)
 
     def download_log(self):
         """自动保存日志到 OUT/ 目录，文件名为年月日时分秒.log"""
