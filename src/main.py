@@ -108,8 +108,8 @@ class Application:
             self.gui.time_sync_var.set(False)
             return
         mgr.build_and_send()
-        # 每 x 秒发送一次时间同步帧
-        self._sync_timer_id = self.root.after(500, self._start_time_sync)
+        # 每 x 秒发送一次时间同步帧  现定为66ms×6=396ms
+        self._sync_timer_id = self.root.after(396, self._start_time_sync)
 
     def _stop_time_sync(self):
         """取消 after 定时器，停止时间同步"""

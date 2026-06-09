@@ -8,7 +8,7 @@ import can
 # DBC 文件路径
 _DBC_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    'images', 'MCR1+MFR1+objects_list CAN Matrix to Zelos_V3.0.2_03_TX.dbc'
+    'images', 'MCR1+MFR1+objects_list CAN Matrix to Zelos_TX.dbc'
 )
 
 # OA 结果 CAN ID 映射（来自 DBC）
