@@ -299,7 +299,7 @@ class RadarDiagnosticsGUI:
         if changed_entries:
             # 首次写入时生成文件名并创建文件，同一运行中后续写入追加到同一个文件
             if getattr(self, '_dtc_log_path', None) is None:#_dtc_log_path ：文件名仅在首次生成（None 时生成）
-                log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'OUT')
+                log_dir = os.path.join(os.getcwd(), 'OUT')
                 os.makedirs(log_dir, exist_ok=True)
                 filename = datetime.now().strftime('%Y%m%d%H%M%S') + '_DTC.log'
                 self._dtc_log_path = os.path.join(log_dir, filename)
