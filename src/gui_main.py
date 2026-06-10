@@ -612,5 +612,6 @@ class RadarDiagnosticsGUI:
         filename = datetime.now().strftime('%Y%m%d%H%M%S') + '.log'
         filepath = os.path.join(out_dir, filename)
         content = self.log_text.get('1.0', tk.END)
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(content)
+        if content.strip():# 检查是否有内容，不为空时才保存
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(content)
