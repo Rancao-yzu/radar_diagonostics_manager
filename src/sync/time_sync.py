@@ -37,7 +37,7 @@ class TimeSyncManager:
             self.log_callback(msg, tag)
 
     def build_and_send(self, msg_type=0x20):
-        """取当前系统时间，按协议打包 64 字节 CANFD 扩展帧，向四轮 CAN ID 各发一帧"""
+        """取当前系统时间，按协议打包 64 字节 CANFD 标准帧，向四轮 CAN ID 各发一帧"""
         now = time.time()
         seconds = int(now)
         nanos = int((now - seconds) * 1e9)
@@ -81,7 +81,7 @@ class TimeSyncManager:
             msg = can.Message(
                 arbitration_id=can_id,
                 data=bytes(raw),
-                is_extended_id=True,
+                is_extended_id=False,
                 is_fd=True,
                 dlc=64,
             )
