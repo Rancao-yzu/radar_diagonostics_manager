@@ -5,6 +5,7 @@ import os
 import sys
 import tkinter as tk
 from tkinter import ttk
+from datetime import datetime
 from PIL import Image, ImageTk
 
 from gui_styles import (ORANGE_PRIMARY, ORANGE_LIGHT, BG_CARD, TEXT_DARK,ORANGE_ACCENT, 
@@ -258,12 +259,15 @@ class RadarDiagnosticsGUI:
             self.dtc_status_var.set("● 未接收")
 
     def dtc_update_table(self, all_entries):
-        """更新 DTC 表格数据"""
+        """更新 DTC 表格数据，并将 change_ts 不为 0 的条目持久化到日志文件"""
         for item in self.dtc_tree.get_children():
             self.dtc_tree.delete(item)
 
         if all_entries is None:
             return
+
+        # 收集所有 change_ts 不为 0 的 DTC 条目，用于写入日志文件
+        changed_entries = []
 
         row_idx = 0
         for node in ['FL', 'FR', 'RL', 'RR']:
@@ -284,6 +288,32 @@ class RadarDiagnosticsGUI:
                     entry.get('change_ts', 0),
                 ), tags=(tag,))
                 row_idx += 1
+
+                # 仅保存 change_ts 不为 0 的条目（表示 DTC 状态发生过变化）
+                if entry.get('change_ts', 0) != 0:
+                    entry['_dtc_type_str'] = dtc_type_str
+                    entry['_status_str'] = status_str
+                    changed_entries.append(entry)
+
+        # 如果有发生变化的 DTC 条目，写入日志文件持久化存储
+        if changed_entries:
+            # 首次写入时生成文件名并创建文件，同一运行中后续写入追加到同一个文件
+            if getattr(self, '_dtc_log_path', None) is None:#_dtc_log_path ：文件名仅在首次生成（None 时生成）
+                log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'OUT')
+                os.makedirs(log_dir, exist_ok=True)
+                filename = datetime.now().strftime('%Y%m%d%H%M%S') + '_DTC.log'
+                self._dtc_log_path = os.path.join(log_dir, filename)
+            ts = datetime.now().strftime("%H:%M:%S")
+            write_mode = 'w' if not getattr(self, '_dtc_log_written', False) else 'a'
+            self._dtc_log_written = True
+            with open(self._dtc_log_path, write_mode, encoding='utf-8') as f:
+                for entry in changed_entries:
+                    f.write(
+                        f"[{ts}] Node={entry.get('node')} | Group={entry.get('group')} | Entry={entry.get('entry')} | "
+                        f"StatusMask=0x{entry.get('status_mask', 0):02X} ({entry.get('_status_str', '')}) | "
+                        f"DTC_Type=0x{entry.get('dtc_type', 0):02X} ({entry.get('_dtc_type_str', '')}) | "
+                        f"DTC_Num=0x{entry.get('dtc_num', 0):08X} | ChangeTS={entry.get('change_ts', 0)}\n"
+                    )
 
     def _build_cal_panel(self):
         """构建 标定和标定查询面板"""
@@ -567,7 +597,6 @@ class RadarDiagnosticsGUI:
 
     def log(self, message, tag="INFO"):
         """将日志消息添加到文本框中（线程安全）"""
-        from datetime import datetime
         ts = datetime.now().strftime("%H:%M:%S")
         def _write():
             self.log_text.configure(state=tk.NORMAL)
@@ -578,7 +607,6 @@ class RadarDiagnosticsGUI:
 
     def download_log(self):
         """自动保存日志到 OUT/ 目录，文件名为年月日时分秒.log"""
-        from datetime import datetime
         out_dir = os.path.join(os.getcwd(), 'OUT')
         os.makedirs(out_dir, exist_ok=True)
         filename = datetime.now().strftime('%Y%m%d%H%M%S') + '.log'

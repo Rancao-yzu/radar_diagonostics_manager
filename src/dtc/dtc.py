@@ -67,7 +67,6 @@ class DTCManager:
 
     def _log(self, msg, tag='INFO'):
         """通过回调输出日志到 GUI"""
-        print(msg)
         if self.log_callback:
             self.log_callback(msg, tag)
 
@@ -143,8 +142,6 @@ class DTCManager:
         不匹配则丢弃该帧。
         """
         hdr = self._group1_header
-        byte_info = ' '.join(f'{i:02d}:0x{b:02X}' for i, b in enumerate(data))
-        print(f'[DTC] {node}| 原始数据: {byte_info}')   #打印原始数据，
 
         # 校验 MessageType 字段
         message_type = data[hdr['message_type_byte']]
@@ -158,7 +155,7 @@ class DTCManager:
         fn_bytes = hdr['frame_number_bytes']
         frame_number = int.from_bytes(data[fn_bytes[0]:fn_bytes[1]+1], 'big')  # 消息唯一序号
 
-        print(f'[DTC] {node}| 时间戳={timestamp} | DTC数量={dtc_number} | MessageType=0x{message_type:02X} | 帧序号={frame_number}')
+        self._log(f'[DTC] {node}| 时间戳={timestamp} | DTC数量={dtc_number} | MessageType=0x{message_type:02X} | 帧序号={frame_number}')
 
         with self._lock:
             # 遍历 GROUP1 的 5 个 DTC 条目，按配置的字节位置逐个解析
