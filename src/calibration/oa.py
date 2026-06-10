@@ -19,13 +19,27 @@ _OA_CAN_IDS = {
     1486: "FL",   # FrameHeader_FL
 }
 
+# 需要打印的传出变量关键字（不在列表中的值不输出）
+_OUTPUT_KEYWORDS = {
+    'CALIB_RadarStatus',
+    'CALIB_FinalCalibState',
+    'YawMountAngle',
+    'PitchMountAngle',
+    'EleOffset',
+    'AziOffset',
+    'MountPosX',
+    'MountPosZ',
+    'MountPosY',
+}
+
 
 class OAResultReceiver:
     """OA 结果接收器 — 监听四轮雷达 FrameHeader，DBC 解析后输出到日志"""
 
-    def __init__(self, bus: can.BusABC, log_callback=None):
+    def __init__(self, bus: can.BusABC, log_callback=None, data_callback=None):
         self.bus = bus
         self.log_callback = log_callback
+        self.data_callback = data_callback
         self._running = False
         self._thread = None
         db = cantools.database.load_file(_DBC_PATH)
@@ -89,16 +103,23 @@ class OAResultReceiver:
 
             node = _OA_CAN_IDS[can_id]  # cached_msg 已确保 can_id 在映射中
 
-            # 按逻辑分组输出核心信号
-            parts = [f'[OA] {node}']
+            # 提取传出变量
+            filtered = {}
             for name, val in decoded.items():
-                # 去掉 RSDS_XX_ 前缀，精简显示
                 short = name.split('_', 2)[-1] if name.startswith('RSDS_') else name
+                matched_kw = next((kw for kw in _OUTPUT_KEYWORDS if kw in short), None)
+                if matched_kw is None:# 只传出变量关键字列表中的值
+                    continue
                 # EleOffset / AziOffset 弧度转角度
                 if ('EleOffset' in name or 'AziOffset' in name) and isinstance(val, (int, float)):
                     val = round(val * 180.0 / 3.141, 4)
-                if isinstance(val, float):
-                    parts.append(f'{short}={val:.4f}')
-                else:
-                    parts.append(f'{short}={val}')
+                elif isinstance(val, float):
+                    val = round(val, 4)
+                filtered[matched_kw] = val
+            if self.data_callback:
+                self.data_callback(node, filtered)
+            # 按逻辑分组输出核心信号
+            parts = [f'[OA] {node}']
+            for key, val in filtered.items():
+                parts.append(f'{key}={val}')
             self._log(' | '.join(parts), 'OK')

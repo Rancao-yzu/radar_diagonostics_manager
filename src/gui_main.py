@@ -34,6 +34,7 @@ class RadarDiagnosticsGUI:
         self._build_ota_panel()     # OTA 面板
         self._build_dtc_panel()     # DTC 面板
         self._build_cal_panel()     # 标定 面板
+        self._build_oa_panel()     # OA 面板
         self._build_log_area()      # 构建日志区域
         self._show_ota_panel()      # 显示 OTA 升级面板
 
@@ -83,6 +84,9 @@ class RadarDiagnosticsGUI:
 
         self.btn_cal = _SideButton(self.sidebar, text="◈  标定和查询",command=None, bg=BG_CARD, height=60)
         self.btn_cal.pack(pady=(0, 4), anchor=tk.W)
+
+        self.btn_oa = _SideButton(self.sidebar, text="◈  OA 结果",command=None, bg=BG_CARD, height=60)
+        self.btn_oa.pack(pady=(0, 4), anchor=tk.W)
 
         tk.Frame(self.sidebar, bg=ORANGE_LIGHT, height=1).pack(fill=tk.X, pady=(12, 12))
 
@@ -351,30 +355,82 @@ class RadarDiagnosticsGUI:
                                        fg=ORANGE_PRIMARY, hover=ORANGE_LIGHT, width=130, height=32)
         self.btn_clear_4.pack(side=tk.LEFT)
 
-        # OA 结果接收
-        section_oa = ttk.LabelFrame(inner, text="OA 结果接收", style='Card.TLabelframe')
-        section_oa.pack(fill=tk.X, pady=(8, 0))
-
-        oa_inner = tk.Frame(section_oa, bg=BG_CARD)
-        oa_inner.pack(fill=tk.X, padx=CARD_PAD[0], pady=CARD_PAD[1])
-
-        self.btn_oa_start = _FlatButton(oa_inner, text="OA结果接收", bg=ORANGE_PRIMARY,
-                                        hover=ORANGE_ACCENT, width=100, height=32)
-        self.btn_oa_start.pack(side=tk.LEFT, padx=(0, 10))
-        self.btn_oa_stop = _FlatButton(oa_inner, text="OA结果停止接收", bg="#FFD8D8",
-                                        fg=ORANGE_PRIMARY, hover=ORANGE_LIGHT, width=130, height=32)
-        self.btn_oa_stop.pack(side=tk.LEFT)
-        self.btn_oa_stop.set_enabled(False)
-
-        self.oa_status_var = tk.StringVar(value="● 未接收")
-        tk.Label(oa_inner, textvariable=self.oa_status_var,
-                 font=('Microsoft YaHei', 9), fg=ORANGE_ACCENT, bg=BG_CARD).pack(side=tk.LEFT, padx=(10, 0))
-
     def _set_cal_buttons_state(self, state):
         """设置 标定和标定查询 操作按钮状态"""
         for i in range(1, 5):
             for prefix in ('btn_static_', 'btn_param_', 'btn_clear_'):
                 getattr(self, prefix + str(i)).configure(state=state)
+
+    def _build_oa_panel(self):
+        """构建 OA 结果面板"""
+        self.oa_panel = ttk.Frame(self.main_area, style='Card.TFrame')
+
+        inner = tk.Frame(self.oa_panel, bg=BG_CARD)
+        inner.pack(fill=tk.BOTH, expand=True, padx=CARD_PAD[0], pady=CARD_PAD[1])
+
+        tk.Label(inner, text="OA 结果", font=('Microsoft YaHei', 11, 'bold'),
+                 fg=TEXT_DARK, bg=BG_CARD).pack(anchor=tk.W, pady=(0, 10))
+
+        # 操作按钮
+        btn_frame = tk.Frame(inner, bg=BG_CARD)
+        btn_frame.pack(fill=tk.X, pady=(0, 8))
+
+        self.btn_oa_start = _FlatButton(btn_frame, text="开始接收", bg=ORANGE_PRIMARY,
+                                        hover=ORANGE_ACCENT, width=100, height=32)
+        self.btn_oa_start.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_oa_stop = _FlatButton(btn_frame, text="停止接收", bg="#FFD8D8",
+                                        fg=ORANGE_PRIMARY, hover=ORANGE_LIGHT, width=100, height=32)
+        self.btn_oa_stop.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_oa_stop.set_enabled(False)
+
+        self.oa_status_var = tk.StringVar(value="● 未接收")
+        tk.Label(btn_frame, textvariable=self.oa_status_var,
+                 font=('Microsoft YaHei', 9), fg=ORANGE_ACCENT, bg=BG_CARD).pack(side=tk.LEFT, padx=(10, 0))
+
+        # 传出变量表格
+        tree_frame = tk.Frame(inner, bg=BG_CARD)
+        tree_frame.pack(fill=tk.BOTH, expand=True)
+
+        columns = ('node', 'RadarStatus', 'FinalCalibState', 'YawMountAngle',
+                   'PitchMountAngle', 'EleOffset', 'AziOffset',
+                   'MountPosX', 'MountPosZ', 'MountPosY')
+        self.oa_tree = ttk.Treeview(tree_frame, columns=columns, show='headings', height=4)
+
+        col_widths = {'node': 50, 'RadarStatus': 100, 'FinalCalibState': 110,
+                      'YawMountAngle': 100, 'PitchMountAngle': 100,
+                      'EleOffset': 90, 'AziOffset': 90,
+                      'MountPosX': 90, 'MountPosZ': 90, 'MountPosY': 90}
+        col_labels = {'node': '节点', 'RadarStatus': 'RadarStatus',
+                      'FinalCalibState': 'FinalCalibState',
+                      'YawMountAngle': 'YawMountAngle', 'PitchMountAngle': 'PitchMountAngle',
+                      'EleOffset': 'EleOffset', 'AziOffset': 'AziOffset',
+                      'MountPosX': 'MountPosX', 'MountPosZ': 'MountPosZ', 'MountPosY': 'MountPosY'}
+        for col in columns:
+            self.oa_tree.heading(col, text=col_labels.get(col, col))
+            self.oa_tree.column(col, width=col_widths.get(col, 100), anchor=tk.CENTER)
+
+        self.oa_tree.tag_configure('even_row', background='white')
+        self.oa_tree.tag_configure('odd_row', background='#FFF0E0')
+        self.oa_tree.pack(fill=tk.BOTH, expand=True)
+
+        # 初始化 4 行空数据
+        for i, node in enumerate(['FL', 'FR', 'RL', 'RR']):
+            tag = 'even_row' if i % 2 == 0 else 'odd_row'
+            self.oa_tree.insert('', tk.END, iid=node, values=(node, '', '', '', '', '', '', '', '', ''), tags=(tag,))
+
+    def oa_update_table(self, node, data):
+        """更新 OA 表格中指定节点的数据"""
+        row_data = [node]
+        for col in ('CALIB_RadarStatus', 'CALIB_FinalCalibState', 'YawMountAngle',
+                     'PitchMountAngle', 'EleOffset', 'AziOffset',
+                     'MountPosX', 'MountPosZ', 'MountPosY'):
+            val = data.get(col, '')
+            if isinstance(val, float):
+                row_data.append(f'{val:.4f}')
+            else:
+                row_data.append(str(val) if val != '' else '')
+        if self.oa_tree.exists(node):
+            self.oa_tree.item(node, values=row_data)
 
     def oa_set_buttons_state(self, running):
         """设置 OA 结果接收按钮状态"""
@@ -444,7 +500,7 @@ class RadarDiagnosticsGUI:
 
     def _hide_all_panels(self):
         """隐藏所有面板"""
-        for panel in [self.ota_panel, self.dtc_panel, self.cal_panel]:
+        for panel in [self.ota_panel, self.dtc_panel, self.cal_panel, self.oa_panel]:
             panel.pack_forget()
 
     def _show_ota_panel(self):
@@ -454,6 +510,7 @@ class RadarDiagnosticsGUI:
         self.btn_ota.set_active(True)
         self.btn_dtc.set_active(False)
         self.btn_cal.set_active(False)
+        self.btn_oa.set_active(False)
 
     def _show_dtc_panel(self):
         """显示 DTC 操作面板"""
@@ -462,6 +519,7 @@ class RadarDiagnosticsGUI:
         self.btn_dtc.set_active(True)
         self.btn_ota.set_active(False)
         self.btn_cal.set_active(False)
+        self.btn_oa.set_active(False)
 
     def _show_cal_panel(self):
         """显示 标定和标定查询 操作面板"""
@@ -470,6 +528,16 @@ class RadarDiagnosticsGUI:
         self.btn_cal.set_active(True)
         self.btn_ota.set_active(False)
         self.btn_dtc.set_active(False)
+        self.btn_oa.set_active(False)
+
+    def _show_oa_panel(self):
+        """显示 OA 结果面板"""
+        self._hide_all_panels()
+        self.oa_panel.pack(fill=tk.BOTH, expand=True)
+        self.btn_oa.set_active(True)
+        self.btn_ota.set_active(False)
+        self.btn_dtc.set_active(False)
+        self.btn_cal.set_active(False)
 
     # ---- 外部接口 ----
 

@@ -42,6 +42,7 @@ class Application:
         self.gui.btn_ota._command = self.gui._show_ota_panel
         self.gui.btn_dtc._command = self.gui._show_dtc_panel
         self.gui.btn_cal._command = self.gui._show_cal_panel
+        self.gui.btn_oa._command = self.gui._show_oa_panel
 
         # 刷新通道按钮
         self.gui.btn_connect.configure(command=self._on_connect)
@@ -216,9 +217,14 @@ class Application:
             self.gui.log('[OA WARN] 请先连接 CAN 总线', 'ERROR')
             return
         if self._oa_mgr is None:
-            self._oa_mgr = OAResultReceiver(self._bus, log_callback=self.gui.log)
+            self._oa_mgr = OAResultReceiver(self._bus, log_callback=self.gui.log,
+                                            data_callback=self._on_oa_data)
         self._oa_mgr.start()
         self.gui.oa_set_buttons_state(True)
+
+    def _on_oa_data(self, node, data):
+        """OA 数据回调（接收线程中调用，通过 idle 切回主线程更新表格）"""
+        self.gui.root.after_idle(lambda: self.gui.oa_update_table(node, data))
 
     def _stop_oa(self):
         """停止 OA 结果接收器 按钮的实例"""
