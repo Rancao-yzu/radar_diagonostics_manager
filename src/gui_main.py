@@ -639,7 +639,15 @@ class RadarDiagnosticsGUI:
         return channel_str.split(":")[0].strip() if channel_str else ""
 
     def log(self, message, tag="INFO"):
-        """将日志消息添加到文本框中（线程安全）"""
+        """
+        将日志消息添加到文本框中（线程安全）
+        标定操作通过 threading.Thread 跑在子线程里。
+        当子线程调用 gui.log() 时，log_text.insert 操作实际是在子线程中执行的。
+        
+        Tkinter 的设计规则是：
+        所有控件操作必须在创建这些控件的线程（即主线程/GUI线程）中执行。 
+        从其他线程操作控件，内部数据结构会产生竞态条件，轻则丢数据，重则 SIGSEGV（段错误）。
+        """
         ts = datetime.now().strftime("%H:%M:%S")
         def _write():
             self.log_text.configure(state=tk.NORMAL)
