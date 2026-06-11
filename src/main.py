@@ -32,7 +32,10 @@ class Application:
         self._sync_timer_id = None
         self._dtc_mgr = None
         self._dtc_refresh_id = None
+        # OA 双通道：主通道和标定专用第二通道
         self._oa_mgr = None
+        self._oa_bus2 = None
+        self._oa_mgr2 = None
 
         self._bind_events()
 
@@ -71,6 +74,9 @@ class Application:
         # OA 结果接收按钮
         self.gui.btn_oa_start._command = self._on_oa_start
         self.gui.btn_oa_stop._command = self._stop_oa
+        # OA 第二通道连接/断开按钮
+        self.gui.btn_oa_connect2._command = self._on_oa_connect2
+        self.gui.btn_oa_disconnect2._command = self._on_oa_disconnect2
 
         # 窗口关闭回调
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -206,30 +212,84 @@ class Application:
         self._stop_time_sync()
         self._stop_dtc()
         self._stop_oa()
+        self._on_oa_disconnect2()
         self.gui.download_log()  # 关闭前自动保存日志
         if self._bus is not None:
             self._bus.shutdown()
         self.root.destroy()
 
     def _on_oa_start(self):
-        """启动 OA 结果接收器 按钮的实例"""
+        """启动 OA 结果接收器（支持双通道）"""
         if self._bus is None:
             self.gui.log('[OA WARN] 请先连接 CAN 总线', 'ERROR')
             return
+        # 主通道 OA 接收器
         if self._oa_mgr is None:
             self._oa_mgr = OAResultReceiver(self._bus, log_callback=self.gui.log,
                                             data_callback=self._on_oa_data)
         self._oa_mgr.start()
+        # 第二通道 OA 接收器（OA 标定专用）
+        if self._oa_bus2 is not None:
+            if self._oa_mgr2 is None:
+                self._oa_mgr2 = OAResultReceiver(self._oa_bus2, log_callback=self.gui.log,
+                                                 data_callback=self._on_oa_data)
+            self._oa_mgr2.start()
         self.gui.oa_set_buttons_state(True)
+
+    def _on_oa_connect2(self):
+        """连接 OA 第二通道"""
+        channel = self.gui.oa_get_channel2_number()
+        if not channel:
+            self.gui.log('[OA WARN] 请先选择第二通道', 'ERROR')
+            return
+        # 断开旧连接
+        self._on_oa_disconnect2()
+        # 从主通道配置获取 bitrate 设置
+        _, bitrate, data_bitrate = self.gui.get_channel_info()
+        if not bitrate or not data_bitrate:
+            self.gui.log('[OA WARN] 请先在 CAN 配置中设置波特率', 'ERROR')
+            return
+        # 第二通道只监听 OA 4 个 CAN ID
+        oa_filters = [{"can_id": cid, "can_mask": 0x7FF, "extended": False}
+                      for cid in (1502, 1470, 1454, 1486)]
+        self.gui.log(f"[INFO] 第二通道 CAN 过滤器: {oa_filters}", "INFO")
+        try:
+            self._oa_bus2 = can.interface.Bus(
+                interface="kvaser",
+                channel=int(channel),
+                bitrate=int(bitrate),
+                data_bitrate=int(data_bitrate),
+                fd=True,
+                can_filters=oa_filters,
+            )
+        except Exception as e:
+            self.gui.log(f'[OA ERROR] 第二通道连接失败: {e}', 'ERROR')
+            self._oa_bus2 = None
+            return
+        self.gui.oa_set_chan2_state(True)
+        self.gui.log(f'[OA] 第二通道已连接 — Channel: {channel}', 'OK')
+
+    def _on_oa_disconnect2(self):
+        """断开 OA 第二通道"""
+        if self._oa_bus2 is not None:
+            self._oa_bus2.shutdown()
+            self._oa_bus2 = None
+            self.gui.log('[OA] 第二通道已断开', 'INFO')
+
+        self.gui.oa_set_chan2_state(False)
 
     def _on_oa_data(self, node, data):
         """OA 数据回调（接收线程中调用，通过 idle 切回主线程更新表格）"""
         self.gui.root.after_idle(lambda: self.gui.oa_update_table(node, data))
 
     def _stop_oa(self):
-        """停止 OA 结果接收器 按钮的实例"""
+        """停止 OA 结果接收器（停所有通道）"""
         if self._oa_mgr is not None:
             self._oa_mgr.stop()
+            self._oa_mgr = None
+        if self._oa_mgr2 is not None:
+            self._oa_mgr2.stop()
+            self._oa_mgr2 = None
         self.gui.oa_set_buttons_state(False)
 
     def _on_dtc_start(self):

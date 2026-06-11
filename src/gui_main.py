@@ -19,7 +19,7 @@ class RadarDiagnosticsGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("WF Radar Diagnostics Manager | ©2021 无锡威孚高科技集团股份有限公司 版权所有")
-        self.root.geometry("1100x750")
+        self.root.geometry("1200x750")
         self.root.configure(bg=BG_CARD)
 
         # 使用 iconphoto 方法设置窗口图标（跨平台兼容，Linux/Windows/macOS 均支持）
@@ -401,6 +401,30 @@ class RadarDiagnosticsGUI:
         tk.Label(inner, text="OA 结果", font=('Microsoft YaHei', 11, 'bold'),
                  fg=TEXT_DARK, bg=BG_CARD).pack(anchor=tk.W, pady=(0, 10))
 
+        # 第二通道配置（OA 标定专用）
+        chan2_frame = tk.Frame(inner, bg=BG_CARD)
+        chan2_frame.pack(fill=tk.X, pady=(0, 8))
+
+        tk.Label(chan2_frame, text="第二通道（OA 标定专用）", font=('Microsoft YaHei', 12),
+                 fg=ORANGE_ACCENT, bg=BG_CARD).pack(side=tk.LEFT, padx=(0, 8))
+
+        self.oa_chan2_var = tk.StringVar()
+        self.oa_chan2_combo = ttk.Combobox(chan2_frame, textvariable=self.oa_chan2_var,
+                                            width=45, state="readonly")
+        self.oa_chan2_combo.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.btn_oa_connect2 = _FlatButton(chan2_frame, text="连接通道2", bg=ORANGE_PRIMARY,
+                                            hover=ORANGE_ACCENT, width=100, height=32)
+        self.btn_oa_connect2.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_oa_disconnect2 = _FlatButton(chan2_frame, text="断开通道2", bg="#FFD8D8",
+                                               fg=ORANGE_PRIMARY, hover=ORANGE_LIGHT, width=100, height=32)
+        self.btn_oa_disconnect2.pack(side=tk.LEFT)
+        self.btn_oa_disconnect2.set_enabled(False)
+
+        self.oa_chan2_status_var = tk.StringVar(value="")
+        tk.Label(chan2_frame, textvariable=self.oa_chan2_status_var,
+                 font=('Microsoft YaHei', 9), fg="#2E7D32", bg=BG_CARD).pack(side=tk.LEFT, padx=(10, 0))
+
         # 操作按钮
         btn_frame = tk.Frame(inner, bg=BG_CARD)
         btn_frame.pack(fill=tk.X, pady=(0, 8))
@@ -468,10 +492,23 @@ class RadarDiagnosticsGUI:
             self.btn_oa_start.set_enabled(False)
             self.btn_oa_stop.set_enabled(True)
             self.oa_status_var.set("● 接收中")
+            # 运行时不允许操作第二通道连接
+            self.btn_oa_connect2.set_enabled(False)
+            self.btn_oa_disconnect2.set_enabled(False)
         else:
+            self.btn_oa_connect2.set_enabled(True)
             self.btn_oa_start.set_enabled(True)
             self.btn_oa_stop.set_enabled(False)
             self.oa_status_var.set("● 未接收")
+
+    def oa_set_chan2_state(self, connected):
+        """设置第二通道连接状态"""
+        if connected:
+            self.btn_oa_disconnect2.set_enabled(True)
+            self.oa_chan2_status_var.set("● 已连接")
+        else:
+            self.btn_oa_disconnect2.set_enabled(False)
+            self.oa_chan2_status_var.set(" ")
 
     def _build_log_area(self):
         """构建日志区域：显示 CAN 通讯日志"""
@@ -574,6 +611,7 @@ class RadarDiagnosticsGUI:
     def set_channel_list(self, channels):
         """设置 CAN 通道列表"""
         self.channel_combo["values"] = channels
+        self.oa_chan2_combo["values"] = channels
         if channels and not self.channel_var.get():
             self.channel_var.set(channels[0])
 
@@ -593,6 +631,11 @@ class RadarDiagnosticsGUI:
     def get_channel_number(self):
         """获取当前选择的 CAN 通道编号"""
         channel_str = self.channel_var.get()
+        return channel_str.split(":")[0].strip() if channel_str else ""
+
+    def oa_get_channel2_number(self):
+        """获取 OA 第二通道编号"""
+        channel_str = self.oa_chan2_var.get()
         return channel_str.split(":")[0].strip() if channel_str else ""
 
     def log(self, message, tag="INFO"):
