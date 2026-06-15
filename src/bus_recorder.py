@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """透明代理：recv/send 透传真实总线，recv 取到消息后自动写"""
 import can
+import time
 
 
 class BusRecorder:
@@ -12,10 +13,13 @@ class BusRecorder:
     def recv(self, timeout=None):
         msg = self._bus.recv(timeout=timeout)
         if msg is not None:
+            msg.is_rx = True    
             self._logger(msg)
         return msg
 
     def send(self, msg, timeout=None):
+        msg.is_rx = False     
+        msg.timestamp = time.time()  
         self._logger(msg)
         self._bus.send(msg, timeout=timeout)
 
