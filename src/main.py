@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """雷达诊断管理程序入口 —— 启动 GUI 并绑定事件"""
+from datetime import datetime
 import sys
 import os
 import threading
@@ -19,6 +20,8 @@ from calibration import CalibrationManager, _load_can_ids, OAResultReceiver
 from sync import TimeSyncManager
 from dtc import DTCManager, load_dtc_config
 import can
+from bus_recorder import BusRecorder
+
 
 class Application:
     """应用程序主类：创建 GUI 实例，绑定按钮事件"""
@@ -196,6 +199,10 @@ class Application:
             fd=True,
             can_filters=filters,
         )
+        # BusRecorder 透明代理，recv 后自动写
+        asc_path = os.path.join('OUT', datetime.now().strftime('%Y%m%d%H%M%S') + '.asc')
+        os.makedirs('OUT', exist_ok=True)
+        self._bus = BusRecorder(self._bus, asc_path)
         # 重置各种管理器和实例状态
         self._cal_mgr = None
         self._sync_mgr = None

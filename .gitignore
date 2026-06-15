@@ -4,6 +4,7 @@ build/
 *.pyc
 build
 devel
+OUT/
 output
 *.ver
 *.pyc
