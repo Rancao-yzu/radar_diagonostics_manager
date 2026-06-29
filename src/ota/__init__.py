@@ -1,2 +1,2 @@
 # OTA 测试模块
-from .ota import test_ota
+from .version_query import query_version, DID_SOFTWARE, DID_HARDWARE

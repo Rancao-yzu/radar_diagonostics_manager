@@ -19,6 +19,7 @@ from can_config import check_can_interfaces
 from calibration import CalibrationManager, _load_can_ids, OAResultReceiver
 from sync import TimeSyncManager
 from dtc import DTCManager, load_dtc_config
+from ota.version_query import query_version, DID_SOFTWARE, DID_HARDWARE
 import can
 from bus_recorder import BusRecorder
 
@@ -80,6 +81,10 @@ class Application:
         # OA 第二通道连接/断开按钮
         self.gui.btn_oa_connect2._command = self._on_oa_connect2
         self.gui.btn_oa_disconnect2._command = self._on_oa_disconnect2
+
+        # 版本查询按钮
+        self.gui.btn_ver_fl._command = lambda: self._on_query_version('FL')
+        self.gui.btn_ver_fr._command = lambda: self._on_query_version('FR')
 
         # 窗口关闭回调
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -179,6 +184,10 @@ class Application:
             {"can_id": ids['left_rear_param_recv'], "can_mask": 0x7FF, "extended": False},
             {"can_id": ids['right_rear_param_recv'], "can_mask": 0x7FF, "extended": False},
         ]
+
+        # 版本号读取相关 CAN ID
+        for can_id in (0x74E, 0x74F, 0x78E, 0x78F):
+            filters.append({"can_id": can_id, "can_mask": 0x7FF, "extended": False})
 
         dtc_ids = load_dtc_config()['can_ids']
         # 配置 CAN 总线过滤器，DTC 相关 CAN ID
@@ -327,6 +336,35 @@ class Application:
             data = self._dtc_mgr.get_all_data()
             self.gui.dtc_update_table(data)
             self._dtc_refresh_id = self.root.after(500, self._dtc_refresh_table)
+
+    def _on_query_version(self, radar):
+        """查询雷达软硬件版本号"""
+        if self._bus is None:
+            self.gui.log('[版本查询] 请先连接 CAN 总线', 'ERROR')
+            return
+
+        def _do_query():
+            sw = query_version(self._bus, radar, DID_SOFTWARE, log_callback=self.gui.log)
+            hw = query_version(self._bus, radar, DID_HARDWARE, log_callback=self.gui.log)
+            self.root.after_idle(lambda: self._update_version_ui(radar, sw, hw))
+
+        self.gui.btn_ver_fl.configure(state=tk.DISABLED)
+        self.gui.btn_ver_fr.configure(state=tk.DISABLED)
+        threading.Thread(target=_do_query, daemon=True).start()
+        # 2.5s 后恢复按钮
+        self.root.after(2500, lambda: self.gui.btn_ver_fl.configure(state=tk.NORMAL))
+        self.root.after(2500, lambda: self.gui.btn_ver_fr.configure(state=tk.NORMAL))
+
+    def _update_version_ui(self, radar, sw, hw):
+        """更新版本查询 UI 显示"""
+        sw_str = f"软件版本: {sw}" if sw else "软件版本: 查询失败"
+        hw_str = f"硬件版本: {hw}" if hw else "硬件版本: 查询失败"
+        if radar == 'FL':
+            self.gui.ver_fl_sw_var.set(sw_str)
+            self.gui.ver_fl_hw_var.set(hw_str)
+        else:
+            self.gui.ver_fr_sw_var.set(sw_str)
+            self.gui.ver_fr_hw_var.set(hw_str)
 
     def _refresh_channels(self):
         """扫描可用 CAN 通道，更新下拉列表，完成后恢复鼠标样式"""

@@ -177,23 +177,6 @@ class RadarDiagnosticsGUI:
                                           hover=ORANGE_ACCENT, width=60, height=28)
         self.btn_ota_browse.pack(side=tk.LEFT)
 
-        # ---- 升级进度 ----
-        section_progress = ttk.LabelFrame(inner, text="升级进度", style='Card.TLabelframe')
-        section_progress.pack(fill=tk.X, pady=(0, 8))
-
-        progress_inner = tk.Frame(section_progress, bg=BG_CARD)
-        progress_inner.pack(fill=tk.X, padx=CARD_PAD[0], pady=CARD_PAD[1])
-
-        self.ota_progress = ttk.Progressbar(
-            progress_inner, mode='determinate', length=400,
-            style='OTA.Horizontal.TProgressbar')
-        self.ota_progress.pack(side=tk.LEFT, padx=(0, 10))
-
-        self.ota_progress_var = tk.StringVar(value="0%")
-        tk.Label(progress_inner, textvariable=self.ota_progress_var,
-                 font=('Microsoft YaHei', 9, 'bold'),
-                 fg=ORANGE_PRIMARY, bg=BG_CARD).pack(side=tk.LEFT)
-
         # ---- 操作按钮 ----
         section_action = ttk.LabelFrame(inner, text="操作", style='Card.TLabelframe')
         section_action.pack(fill=tk.X)
@@ -204,6 +187,45 @@ class RadarDiagnosticsGUI:
         self.btn_ota_start = _FlatButton(action_inner, text="开始升级", bg=ORANGE_PRIMARY,
                                          hover=ORANGE_ACCENT, width=100, height=32)
         self.btn_ota_start.pack(side=tk.LEFT, padx=(0, 10))
+
+        # ---- 版本查询 ----
+        section_ver = ttk.LabelFrame(inner, text="版本查询", style='Card.TLabelframe')
+        section_ver.pack(fill=tk.X, pady=(8, 0))
+
+        ver_inner = tk.Frame(section_ver, bg=BG_CARD)
+        ver_inner.pack(fill=tk.X, padx=CARD_PAD[0], pady=CARD_PAD[1])
+
+        # FL 版本查询
+        fl_frame = tk.Frame(ver_inner, bg=BG_CARD)
+        fl_frame.pack(fill=tk.X)
+
+        self.btn_ver_fl = _FlatButton(fl_frame, text="查询 FL 版本", bg=ORANGE_PRIMARY,
+                                       hover=ORANGE_ACCENT, width=110, height=32)
+        self.btn_ver_fl.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.ver_fl_sw_var = tk.StringVar(value="软件版本: --")
+        tk.Label(fl_frame, textvariable=self.ver_fl_sw_var,
+                 font=('Microsoft YaHei', 9), fg=TEXT_DARK, bg=BG_CARD).pack(side=tk.LEFT, padx=(0, 16))
+
+        self.ver_fl_hw_var = tk.StringVar(value="硬件版本: --")
+        tk.Label(fl_frame, textvariable=self.ver_fl_hw_var,
+                 font=('Microsoft YaHei', 9), fg=TEXT_DARK, bg=BG_CARD).pack(side=tk.LEFT)
+
+        # FR 版本查询
+        fr_frame = tk.Frame(ver_inner, bg=BG_CARD)
+        fr_frame.pack(fill=tk.X, pady=(4, 0))
+
+        self.btn_ver_fr = _FlatButton(fr_frame, text="查询 FR 版本", bg=ORANGE_PRIMARY,
+                                       hover=ORANGE_ACCENT, width=110, height=32)
+        self.btn_ver_fr.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.ver_fr_sw_var = tk.StringVar(value="软件版本: --")
+        tk.Label(fr_frame, textvariable=self.ver_fr_sw_var,
+                 font=('Microsoft YaHei', 9), fg=TEXT_DARK, bg=BG_CARD).pack(side=tk.LEFT, padx=(0, 16))
+
+        self.ver_fr_hw_var = tk.StringVar(value="硬件版本: --")
+        tk.Label(fr_frame, textvariable=self.ver_fr_hw_var,
+                 font=('Microsoft YaHei', 9), fg=TEXT_DARK, bg=BG_CARD).pack(side=tk.LEFT)
 
     def _build_dtc_panel(self):
         """构建 DTC 读取/清除面板"""
