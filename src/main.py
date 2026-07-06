@@ -15,7 +15,7 @@ else:
 sys.path.insert(0, os.path.join(_BASE_DIR, 'lib'))
 
 from gui_main import RadarDiagnosticsGUI
-from can_config import check_can_interfaces
+from can_config import check_can_interfaces, check_canoe_interfaces
 from calibration import CalibrationManager, _load_can_ids, OAResultReceiver
 from sync import TimeSyncManager
 from dtc import DTCManager, load_dtc_config
@@ -371,12 +371,13 @@ class Application:
         self.gui.root.config(cursor="watch")
         self.gui.root.update()
         try:
-            interfaces = check_can_interfaces()
-            if interfaces:
-                self.gui.set_channel_list(interfaces)
-                self.gui.log(f"[INFO] 检测到 {len(interfaces)} 个 CAN 通道", "INFO")
+            kvaser_channels = check_can_interfaces()
+            canoe_channels = check_canoe_interfaces()
+            if kvaser_channels or canoe_channels:
+                self.gui.set_channel_lists(kvaser_channels, canoe_channels)
+                self.gui.log(f"[INFO] 检测到 {len(kvaser_channels)} 个 Kvaser 通道, {len(canoe_channels)} 个 CANoe 通道", "INFO")
             else:
-                self.gui.set_channel_list([])
+                self.gui.set_channel_lists([], [])
                 self.gui.log("[WARN] 未检测到 CAN 硬件接口", "ERROR")
         finally:
             self.gui.root.config(cursor="")

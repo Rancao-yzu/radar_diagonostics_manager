@@ -29,3 +29,25 @@ def check_can_interfaces():
 
     except Exception:
         return []
+
+
+def check_canoe_interfaces():
+    """
+    扫描 Vector CANoe 硬件接口（VN1630A 等），过滤掉虚拟通道（serial=100）
+    返回一个列表，每个元素为 "0: 设备名称 (SN: 序列号)"
+
+    :return: 列表，包含可用的 Vector/Canoe 硬件接口信息
+    """
+    try:
+        from can.interfaces.vector import VectorBus
+        configs = VectorBus._detect_available_configs()
+        results = []
+        for ch in configs:
+            cfg = ch['vector_channel_config']
+            if cfg.serial_number == 100:  # 过滤虚拟通道
+                continue
+            results.append(f"0: VN1630A (SN: {cfg.serial_number})")
+        print(results)
+        return results
+    except Exception:
+        return []

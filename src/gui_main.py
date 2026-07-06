@@ -29,6 +29,8 @@ class RadarDiagnosticsGUI:
             self.root.iconphoto(True, icon_img)
 
         setup_styles()              # 初始化样式
+        self._kvaser_channels = []  # 双接口通道缓存
+        self._canoe_channels = []
         self._build_main_layout()   # 构建主布局
         self._build_sidebar()       # 构建侧栏导航
         self._build_can_config()    # CAN 配置面板
@@ -113,29 +115,39 @@ class RadarDiagnosticsGUI:
         grid = tk.Frame(inner, bg=BG_CARD)
         grid.pack(fill=tk.X)
 
+        # 接口类型选择
+        tk.Label(grid, text="Interface", font=('Microsoft YaHei', 9),
+                 fg=ORANGE_ACCENT, bg=BG_CARD).grid(row=0, column=0, sticky=tk.W, pady=4, padx=(0, 8))
+        self.interface_var = tk.StringVar(value="kvaser")
+        self.interface_combo = ttk.Combobox(grid, textvariable=self.interface_var,
+                                             width=10, state="readonly",
+                                             values=["kvaser", "canoe"])
+        self.interface_combo.grid(row=0, column=1, sticky=tk.W, pady=4, padx=(0, 20))
+        self.interface_var.trace_add('write', lambda *_: self._update_channel_dropdown())
+
         # 通道选择
         tk.Label(grid, text="Channel", font=('Microsoft YaHei', 9),
-                 fg=ORANGE_ACCENT, bg=BG_CARD).grid(row=0, column=0, sticky=tk.W, pady=4, padx=(0, 8))
+                 fg=ORANGE_ACCENT, bg=BG_CARD).grid(row=0, column=2, sticky=tk.W, pady=4, padx=(0, 8))
         self.channel_var = tk.StringVar()
         self.channel_combo = ttk.Combobox(grid, textvariable=self.channel_var,
                                           width=45, state="readonly")
-        self.channel_combo.grid(row=0, column=1, sticky=tk.W, pady=4, padx=(0, 20))
+        self.channel_combo.grid(row=0, column=3, sticky=tk.W, pady=4, padx=(0, 20))
 
         # 波特率选择
         tk.Label(grid, text="Bitrate", font=('Microsoft YaHei', 9),
-                 fg=ORANGE_ACCENT, bg=BG_CARD).grid(row=0, column=2, sticky=tk.W, pady=4, padx=(0, 8))
+                 fg=ORANGE_ACCENT, bg=BG_CARD).grid(row=0, column=4, sticky=tk.W, pady=4, padx=(0, 8))
         self.bitrate_var = tk.StringVar(value="500000")
         self.bitrate_combo = ttk.Combobox(grid, textvariable=self.bitrate_var, width=10,
                                           values=["125000", "250000", "500000", "1000000"])
-        self.bitrate_combo.grid(row=0, column=3, sticky=tk.W, pady=4, padx=(0, 20))
+        self.bitrate_combo.grid(row=0, column=5, sticky=tk.W, pady=4, padx=(0, 20))
 
         # 数据波特率选择
         tk.Label(grid, text="Data Bitrate", font=('Microsoft YaHei', 9),
-                 fg=ORANGE_ACCENT, bg=BG_CARD).grid(row=0, column=4, sticky=tk.W, pady=4, padx=(0, 8))
+                 fg=ORANGE_ACCENT, bg=BG_CARD).grid(row=0, column=6, sticky=tk.W, pady=4, padx=(0, 8))
         self.data_bitrate_var = tk.StringVar(value="2000000")
         self.data_bitrate_combo = ttk.Combobox(grid, textvariable=self.data_bitrate_var, width=10,
                                                values=["500000", "1000000", "2000000", "5000000"])
-        self.data_bitrate_combo.grid(row=0, column=5, sticky=tk.W, pady=4, padx=(0, 20))
+        self.data_bitrate_combo.grid(row=0, column=7, sticky=tk.W, pady=4, padx=(0, 20))
 
         # 连接、刷新通道按钮
         btn_row = tk.Frame(inner, bg=BG_CARD)
@@ -631,10 +643,29 @@ class RadarDiagnosticsGUI:
     # ---- 外部接口 ----
 
     def set_channel_list(self, channels):
-        """设置 CAN 通道列表"""
+        """设置 CAN 通道列表（兼容旧接口，默认 kvaser）"""
+        self._kvaser_channels = channels
+        self._canoe_channels = []
         self.channel_combo["values"] = channels
         self.oa_chan2_combo["values"] = channels
         if channels and not self.channel_var.get():
+            self.channel_var.set(channels[0])
+
+    def set_channel_lists(self, kvaser_channels, canoe_channels):
+        """分别设置 kvaser 和 canoe 通道列表，根据当前接口选择显示"""
+        self._kvaser_channels = kvaser_channels
+        self._canoe_channels = canoe_channels
+        self._update_channel_dropdown()
+
+    def _update_channel_dropdown(self):
+        """根据当前接口类型更新通道下拉框"""
+        if self.interface_var.get() == "canoe":
+            channels = self._canoe_channels
+        else:
+            channels = self._kvaser_channels
+        self.channel_combo["values"] = channels
+        self.oa_chan2_combo["values"] = channels
+        if channels and (not self.channel_var.get() or self.channel_var.get() not in channels):
             self.channel_var.set(channels[0])
 
     def set_connection_status(self, connected):
@@ -659,6 +690,17 @@ class RadarDiagnosticsGUI:
         """获取 OA 第二通道编号"""
         channel_str = self.oa_chan2_var.get()
         return channel_str.split(":")[0].strip() if channel_str else ""
+
+    def get_interface(self):
+        """获取当前选择的 CAN 接口类型：'kvaser' 或 'canoe'"""
+        return self.interface_var.get()
+
+    def get_canoe_serial(self):
+        """从通道选择中解析 canoe 序列号，格式: "0: VN1630A (SN: 12345)" """
+        channel_str = self.channel_var.get()
+        if '(' in channel_str and 'SN:' in channel_str:
+            return int(channel_str.split('SN:')[1].rstrip(')'))
+        return None
 
     def log(self, message, tag="INFO"):
         """
