@@ -89,6 +89,36 @@ class Application:
         # 窗口关闭回调
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
+    def _create_can_bus(self, interface_type, channel, bitrate, data_bitrate, filters):
+        """根据接口类型创建 CAN 总线实例，统一 kvaser/vector 两种硬件"""
+        try:
+            if interface_type == "canoe":
+                serial = self.gui.get_canoe_serial()
+                channel_num = int(self.gui.get_channel_number())
+                self.gui.log(f"[INFO] 连接 Vector 设备 SN={serial} CH={channel_num}", "INFO")
+                return can.interface.Bus(
+                    interface="vector",
+                    serial=serial,
+                    channel=channel_num,
+                    bitrate=int(bitrate),
+                    data_bitrate=int(data_bitrate),
+                    fd=True,
+                    can_filters=filters,
+                )
+            else:
+                # 默认 kvaser
+                return can.interface.Bus(
+                    interface="kvaser",
+                    channel=self.gui.get_channel_number(),
+                    bitrate=int(bitrate),
+                    data_bitrate=int(data_bitrate),
+                    fd=True,
+                    can_filters=filters,
+                )
+        except Exception as e:
+            self.gui.log(f"[ERROR] 连接失败: {e}", "ERROR")
+            return None
+
     def _get_cal_mgr(self):
         """懒加载标定管理器，未连接时提示并返回 None"""
         if self._cal_mgr is None:
@@ -197,17 +227,22 @@ class Application:
         # OA 结果 CAN ID
         for oa_id in (1502, 1470, 1454, 1486):
             filters.append({"can_id": oa_id, "can_mask": 0x7FF, "extended": False})
+            
+        # 去重：Vector 驱动不允许同一个 can_id 存在多个 filter
+        seen_ids = set()
+        unique_filters = []
+        for f in filters:
+            if f["can_id"] not in seen_ids:
+                seen_ids.add(f["can_id"])
+                unique_filters.append(f)
+        filters = unique_filters
         self.gui.log(f"[INFO] CAN 总线过滤器: {filters}", "INFO")
         
-        # 连接 CAN 总线，整个项目的唯一实例!!!!
-        self._bus = can.interface.Bus(
-            interface="kvaser",
-            channel=self.gui.get_channel_number(),
-            bitrate=int(bitrate),
-            data_bitrate=int(data_bitrate),
-            fd=True,
-            can_filters=filters,
-        )
+        # 根据 GUI 选择的接口类型创建对应的 CAN 总线连接
+        interface_type = self.gui.get_interface()
+        self._bus = self._create_can_bus(interface_type, channel, bitrate, data_bitrate, filters)
+        if self._bus is None:
+            return
         # BusRecorder 透明代理，recv 后自动写
         asc_path = os.path.join('OUT', datetime.now().strftime('%Y%m%d%H%M%S') + '.asc')
         os.makedirs('OUT', exist_ok=True)

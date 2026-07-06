@@ -46,7 +46,10 @@ def check_canoe_interfaces():
             cfg = ch['vector_channel_config']
             if cfg.serial_number == 100:  # 过滤虚拟通道
                 continue
-            results.append(f"0: VN1630A (SN: {cfg.serial_number})")
+            # 使用实际检测到的通道索引和设备名称
+            channel = cfg.channel_index
+            name = cfg.name if cfg.name else 'VN1630A'
+            results.append(f"{channel}: {name} (SN: {cfg.serial_number})")
         print(results)
         return results
     except Exception:
