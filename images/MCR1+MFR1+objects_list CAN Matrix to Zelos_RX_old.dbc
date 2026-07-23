@@ -36,38 +36,6 @@ BS_:
 BU_: DC RL RR FL FR
 
 
-BO_ 1828 Pointcloud_output_RR: 8 Vector__XXX
- SG_ Pointcloud_output_enable_RR : 7|8@0+ (1,0) [0|255] ""  RR
-
-BO_ 1827 Pointcloud_output_RL: 8 Vector__XXX
- SG_ Pointcloud_output_enable_RL : 7|8@0+ (1,0) [0|255] ""  RL
-
-BO_ 1826 Pointcloud_output_FR: 8 Vector__XXX
- SG_ Pointcloud_output_enable_FR : 7|8@0+ (1,0) [0|255] ""  FR
-
-BO_ 1825 Pointcloud_output_FL: 8 Vector__XXX
- SG_ Pointcloud_output_enable_FL : 7|8@0+ (1,0) [0|255] ""  FL
-
-BO_ 1935 ReadCmd_FR: 8 Vector__XXX
- SG_ ReadCmd_Subid_FR : 15|16@0+ (1,0) [0|65535] ""  FR
- SG_ ReadCmd_Sid_FR : 7|8@0+ (1,0) [0|255] ""  FR
-
-BO_ 1871 ReadCmd_FL: 8 Vector__XXX
- SG_ ReadCmd_Subid_FL : 15|16@0+ (1,0) [0|65535] ""  FL
- SG_ ReadCmd_Sid_FL : 7|8@0+ (1,0) [0|255] ""  FL
-
-BO_ 1932 ResetCmd_FR: 8 Vector__XXX
- SG_ ResetCmd_Subid_FR : 23|8@0+ (1,0) [0|255] ""  FR
- SG_ ResetCmd_Sid_FR : 15|8@0+ (1,0) [0|255] ""  FR
- SG_ ResetCmd_padding_FR : 31|40@0+ (1,0) [0|1099511627775] ""  FR
- SG_ ResetCmd_length_FR : 7|8@0+ (1,0) [0|255] ""  FR
-
-BO_ 1868 ResetCmd_FL: 8 Vector__XXX
- SG_ ResetCmd_Subid_FL : 23|8@0+ (1,0) [0|255] ""  FL
- SG_ ResetCmd_Sid_FL : 15|8@0+ (1,0) [0|255] ""  FL
- SG_ ResetCmd_padding_FL : 31|40@0+ (1,0) [0|1099511627775] ""  FL
- SG_ ResetCmd_length_FL : 7|8@0+ (1,0) [0|255] ""  FL
-
 BO_ 16 VEHICLE_DATA: 64 Vector__XXX
  SG_ HostYawRate : 55|16@0+ (1,-2048) [-2048|63487] ""  RR,RL,FR,FL
  SG_ HostVel : 39|16@0+ (1,-2000) [-2000|63535] ""  RR,RL,FR,FL
@@ -88,63 +56,63 @@ BO_ 97 CAL_Static_Result_FL: 64 Vector__XXX
 
 BO_ 1632 CAL_Cfg_RR: 64 Vector__XXX
  SG_ CAL_calib_id_RR : 7|8@0+ (1,0) [0|255] "" Vector__XXX
- SG_ CAL_vehicle_chassis_height_RR : 15|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RR
+ SG_ CAL_vehicle_chassis_height_RR : 15|32@0- (1,0) [-3.4E+038|3.4E+038] ""  RR
  SG_ CAL_reserve5_RR : 455|64@0+ (1,0) [0|1.84467440737096E+019] ""  RR
  SG_ CAL_reserve4_RR : 391|64@0+ (1,0) [0|1.84467440737096E+019] ""  RR
  SG_ CAL_reserve3_RR : 327|64@0+ (1,0) [0|1.84467440737096E+019] ""  RR
  SG_ CAL_reserve2_RR : 263|64@0+ (1,0) [0|1.84467440737096E+019] ""  RR
  SG_ CAL_reserve1_RR : 239|24@0+ (1,0) [0|16777215] ""  RR
- SG_ CAL_radar_z_offset_RR : 111|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RR
- SG_ CAL_radar_yaw_angle_RR : 143|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RR
- SG_ CAL_radar_y_offset_RR : 79|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RR
- SG_ CAL_radar_x_offset_RR : 47|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RR
- SG_ CAL_radar_roll_angle_RR : 207|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RR
- SG_ CAL_radar_pitch_angle_RR : 175|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RR
+ SG_ CAL_radar_z_offset_RR : 111|32@0- (1,0) [-3.4E+038|3.4E+038] ""  RR
+ SG_ CAL_radar_yaw_angle_RR : 143|32@0- (1,0) [-3.4E+038|3.4E+038] ""  RR
+ SG_ CAL_radar_y_offset_RR : 79|32@0- (1,0) [-3.4E+038|3.4E+038] ""  RR
+ SG_ CAL_radar_x_offset_RR : 47|32@0- (1,0) [-3.4E+038|3.4E+038] ""  RR
+ SG_ CAL_radar_roll_angle_RR : 207|32@0- (1,0) [-3.4E+038|3.4E+038] ""  RR
+ SG_ CAL_radar_pitch_angle_RR : 175|32@0- (1,0) [-3.4E+038|3.4E+038] ""  RR
 
 BO_ 1120 CAL_Cfg_RL: 64 Vector__XXX
  SG_ CAL_calib_id_RL : 7|8@0+ (1,0) [0|255] "" Vector__XXX
- SG_ CAL_vehicle_chassis_height_RL : 15|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RL
+ SG_ CAL_vehicle_chassis_height_RL : 15|32@0- (1,0) [-3.4E+038|3.4E+038] ""  RL
  SG_ CAL_reserve5_RL : 455|64@0+ (1,0) [0|1.84467440737096E+019] ""  RL
  SG_ CAL_reserve4_RL : 391|64@0+ (1,0) [0|1.84467440737096E+019] ""  RL
  SG_ CAL_reserve3_RL : 327|64@0+ (1,0) [0|1.84467440737096E+019] ""  RL
  SG_ CAL_reserve2_RL : 263|64@0+ (1,0) [0|1.84467440737096E+019] ""  RL
  SG_ CAL_reserve1_RL : 239|24@0+ (1,0) [0|16777215] ""  RL
- SG_ CAL_radar_z_offset_RL : 111|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RL
- SG_ CAL_radar_yaw_angle_RL : 143|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RL
- SG_ CAL_radar_y_offset_RL : 79|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RL
- SG_ CAL_radar_x_offset_RL : 47|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RL
- SG_ CAL_radar_roll_angle_RL : 207|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RL
- SG_ CAL_radar_pitch_angle_RL : 175|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RL
+ SG_ CAL_radar_z_offset_RL : 111|32@0- (1,0) [-3.4E+038|3.4E+038] ""  RL
+ SG_ CAL_radar_yaw_angle_RL : 143|32@0- (1,0) [-3.4E+038|3.4E+038] ""  RL
+ SG_ CAL_radar_y_offset_RL : 79|32@0- (1,0) [-3.4E+038|3.4E+038] ""  RL
+ SG_ CAL_radar_x_offset_RL : 47|32@0- (1,0) [-3.4E+038|3.4E+038] ""  RL
+ SG_ CAL_radar_roll_angle_RL : 207|32@0- (1,0) [-3.4E+038|3.4E+038] ""  RL
+ SG_ CAL_radar_pitch_angle_RL : 175|32@0- (1,0) [-3.4E+038|3.4E+038] ""  RL
 
 BO_ 608 CAL_Cfg_FR: 64 Vector__XXX
  SG_ CAL_calib_id_FR : 7|8@0+ (1,0) [0|255] "" Vector__XXX
- SG_ CAL_vehicle_chassis_height_FR : 15|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FR
+ SG_ CAL_vehicle_chassis_height_FR : 15|32@0- (1,0) [-3.4E+038|3.4E+038] ""  FR
  SG_ CAL_reserve5_FR : 455|64@0+ (1,0) [0|1.84467440737096E+019] ""  FR
  SG_ CAL_reserve4_FR : 391|64@0+ (1,0) [0|1.84467440737096E+019] ""  FR
  SG_ CAL_reserve3_FR : 327|64@0+ (1,0) [0|1.84467440737096E+019] ""  FR
  SG_ CAL_reserve2_FR : 263|64@0+ (1,0) [0|1.84467440737096E+019] ""  FR
  SG_ CAL_reserve1_FR : 239|24@0+ (1,0) [0|16777215] ""  FR
- SG_ CAL_radar_z_offset_FR : 111|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FR
- SG_ CAL_radar_yaw_angle_FR : 143|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FR
- SG_ CAL_radar_y_offset_FR : 79|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FR
- SG_ CAL_radar_x_offset_FR : 47|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FR
- SG_ CAL_radar_roll_angle_FR : 207|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FR
- SG_ CAL_radar_pitch_angle_FR : 175|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FR
+ SG_ CAL_radar_z_offset_FR : 111|32@0- (1,0) [-3.4E+038|3.4E+038] ""  FR
+ SG_ CAL_radar_yaw_angle_FR : 143|32@0- (1,0) [-3.4E+038|3.4E+038] ""  FR
+ SG_ CAL_radar_y_offset_FR : 79|32@0- (1,0) [-3.4E+038|3.4E+038] ""  FR
+ SG_ CAL_radar_x_offset_FR : 47|32@0- (1,0) [-3.4E+038|3.4E+038] ""  FR
+ SG_ CAL_radar_roll_angle_FR : 207|32@0- (1,0) [-3.4E+038|3.4E+038] ""  FR
+ SG_ CAL_radar_pitch_angle_FR : 175|32@0- (1,0) [-3.4E+038|3.4E+038] ""  FR
 
 BO_ 96 CAL_Cfg_FL: 64 Vector__XXX
  SG_ CAL_calib_id_FL : 7|8@0+ (1,0) [0|255] "" Vector__XXX
- SG_ CAL_vehicle_chassis_height_FL : 15|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FL
+ SG_ CAL_vehicle_chassis_height_FL : 15|32@0- (1,0) [-3.4E+038|3.4E+038] ""  FL
  SG_ CAL_reserve5_FL : 455|64@0+ (1,0) [0|1.84467440737096E+019] ""  FL
  SG_ CAL_reserve4_FL : 391|64@0+ (1,0) [0|1.84467440737096E+019] ""  FL
  SG_ CAL_reserve3_FL : 327|64@0+ (1,0) [0|1.84467440737096E+019] ""  FL
  SG_ CAL_reserve2_FL : 263|64@0+ (1,0) [0|1.84467440737096E+019] ""  FL
  SG_ CAL_reserve1_FL : 239|24@0+ (1,0) [0|16777215] ""  FL
- SG_ CAL_radar_z_offset_FL : 111|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FL
- SG_ CAL_radar_yaw_angle_FL : 143|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FL
- SG_ CAL_radar_y_offset_FL : 79|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FL
- SG_ CAL_radar_x_offset_FL : 47|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FL
- SG_ CAL_radar_roll_angle_FL : 207|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FL
- SG_ CAL_radar_pitch_angle_FL : 175|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FL
+ SG_ CAL_radar_z_offset_FL : 111|32@0- (1,0) [-3.4E+038|3.4E+038] ""  FL
+ SG_ CAL_radar_yaw_angle_FL : 143|32@0- (1,0) [-3.4E+038|3.4E+038] ""  FL
+ SG_ CAL_radar_y_offset_FL : 79|32@0- (1,0) [-3.4E+038|3.4E+038] ""  FL
+ SG_ CAL_radar_x_offset_FL : 47|32@0- (1,0) [-3.4E+038|3.4E+038] ""  FL
+ SG_ CAL_radar_roll_angle_FL : 207|32@0- (1,0) [-3.4E+038|3.4E+038] ""  FL
+ SG_ CAL_radar_pitch_angle_FL : 175|32@0- (1,0) [-3.4E+038|3.4E+038] ""  FL
 
 BO_ 67 TSYNC_RR: 64 Vector__XXX
  SG_ TSYNC_Status_RR : 127|8@0+ (1,0) [0|255] ""  RR
@@ -216,14 +184,6 @@ BA_DEF_DEF_  "CANoeStartDelay" 0;
 BA_DEF_DEF_  "VFrameFormat" "StandardCAN_FD";
 BA_ "BusType" "CAN FD";
 BA_ "DBName" "VCANFD";
-BA_ "VFrameFormat" BO_ 1828 14;
-BA_ "VFrameFormat" BO_ 1827 14;
-BA_ "VFrameFormat" BO_ 1826 14;
-BA_ "VFrameFormat" BO_ 1825 14;
-BA_ "VFrameFormat" BO_ 1935 14;
-BA_ "VFrameFormat" BO_ 1871 14;
-BA_ "VFrameFormat" BO_ 1932 14;
-BA_ "VFrameFormat" BO_ 1868 14;
 BA_ "GenMsgSendType" BO_ 16 0;
 BA_ "GenMsgCycleTime" BO_ 16 10;
 BA_ "VFrameFormat" BO_ 16 14;
@@ -267,4 +227,32 @@ BA_ "GenSigStartValue" SG_ 16 HostYawRate 2048;
 BA_ "GenSigStartValue" SG_ 16 HostVel 2000;
 BA_ "GenSigStartValue" SG_ 16 HostAccelLong 2000;
 BA_ "GenSigStartValue" SG_ 16 HostAccelLat 2000;
+SIG_VALTYPE_ 1632 CAL_vehicle_chassis_height_RR : 1;
+SIG_VALTYPE_ 1632 CAL_radar_z_offset_RR : 1;
+SIG_VALTYPE_ 1632 CAL_radar_yaw_angle_RR : 1;
+SIG_VALTYPE_ 1632 CAL_radar_y_offset_RR : 1;
+SIG_VALTYPE_ 1632 CAL_radar_x_offset_RR : 1;
+SIG_VALTYPE_ 1632 CAL_radar_roll_angle_RR : 1;
+SIG_VALTYPE_ 1632 CAL_radar_pitch_angle_RR : 1;
+SIG_VALTYPE_ 1120 CAL_vehicle_chassis_height_RL : 1;
+SIG_VALTYPE_ 1120 CAL_radar_z_offset_RL : 1;
+SIG_VALTYPE_ 1120 CAL_radar_yaw_angle_RL : 1;
+SIG_VALTYPE_ 1120 CAL_radar_y_offset_RL : 1;
+SIG_VALTYPE_ 1120 CAL_radar_x_offset_RL : 1;
+SIG_VALTYPE_ 1120 CAL_radar_roll_angle_RL : 1;
+SIG_VALTYPE_ 1120 CAL_radar_pitch_angle_RL : 1;
+SIG_VALTYPE_ 608 CAL_vehicle_chassis_height_FR : 1;
+SIG_VALTYPE_ 608 CAL_radar_z_offset_FR : 1;
+SIG_VALTYPE_ 608 CAL_radar_yaw_angle_FR : 1;
+SIG_VALTYPE_ 608 CAL_radar_y_offset_FR : 1;
+SIG_VALTYPE_ 608 CAL_radar_x_offset_FR : 1;
+SIG_VALTYPE_ 608 CAL_radar_roll_angle_FR : 1;
+SIG_VALTYPE_ 608 CAL_radar_pitch_angle_FR : 1;
+SIG_VALTYPE_ 96 CAL_vehicle_chassis_height_FL : 1;
+SIG_VALTYPE_ 96 CAL_radar_z_offset_FL : 1;
+SIG_VALTYPE_ 96 CAL_radar_yaw_angle_FL : 1;
+SIG_VALTYPE_ 96 CAL_radar_y_offset_FL : 1;
+SIG_VALTYPE_ 96 CAL_radar_x_offset_FL : 1;
+SIG_VALTYPE_ 96 CAL_radar_roll_angle_FL : 1;
+SIG_VALTYPE_ 96 CAL_radar_pitch_angle_FL : 1;
 

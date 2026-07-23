@@ -55,7 +55,7 @@ def _clean_val(cfg, section, key):
     return val.strip()
 
 # 参数数据格式：7个float（大端序）
-PARAM_STRUCT = struct.Struct('>fffffff')
+PARAM_STRUCT = struct.Struct('>iiiiiii')
 
 RESULT_STATUS_MAP = {
     1: "结果合格",
@@ -248,11 +248,11 @@ class CalibrationManager:
         send_id = self._can_ids[f'{key}_param_send']
         recv_id = self._can_ids[f'{key}_param_recv']
 
-        # 构建参数数据包
+        # 构建参数数据包（统一 *1000 取整下发）
         packed = PARAM_STRUCT.pack(
-            params['vehicle_height'],
-            params['x_offset'], params['y_offset'], params['z_offset'],
-            params['yaw_angle'], params['pitch_angle'], params['roll_angle'],
+            int(params['vehicle_height'] * 1000),
+            int(params['x_offset'] * 1000), int(params['y_offset'] * 1000), int(params['z_offset'] * 1000),
+            int(params['yaw_angle'] * 1000), int(params['pitch_angle'] * 1000), int(params['roll_angle'] * 1000),
         )
         data = [0x01] + list(packed) + [0x00] * 35
 
