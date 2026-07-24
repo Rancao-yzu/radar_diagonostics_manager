@@ -77,7 +77,6 @@ class Application:
 
         # OA 结果接收按钮
         self.gui.btn_oa_start._command = self._on_oa_start
-        self.gui.btn_oa_stop._command = self._stop_oa
         # OA 第二通道连接/断开按钮
         self.gui.btn_oa_connect2._command = self._on_oa_connect2
         self.gui.btn_oa_disconnect2._command = self._on_oa_disconnect2
@@ -251,6 +250,8 @@ class Application:
                                                  data_callback=self._on_oa_data)
             self._oa_mgr2.start()
         self.gui.oa_set_buttons_state(True)
+        # 3 秒后自动停止
+        threading.Timer(3.0, self._stop_oa).start()
 
     def _on_oa_connect2(self):
         """连接 OA 第二通道"""

@@ -41,6 +41,7 @@ class DTCManager:
         self._group2_entries = self._config['group2_entries']
         self._dtc_type_bits = self._config['dtc_type']
         self._status_mask_bits = self._config['status_mask']
+        self._fault_codes = self._config['fault_codes']
 
         # 所有雷达节点的 DTC 数据，结构:
         # { 'FL': [{entry1}, {entry2}, ...], 'FR': [...], ... }
@@ -197,6 +198,7 @@ class DTCManager:
             for entry in data[node]:
                 entry['dtc_type_labels'] = self.resolve_dtc_type(entry.get('dtc_type', 0))
                 entry['status_mask_labels'] = self.resolve_status_mask(entry.get('status_mask', 0))
+                entry['fault_label'] = self._fault_codes.get(entry.get('dtc_num', 0), 'None')
         return data
 
     def resolve_dtc_type(self, dtc_type_byte):
@@ -206,7 +208,7 @@ class DTCManager:
             if dtc_type_byte & (1 << bit_pos):
                 label = self._dtc_type_bits.get(bit_pos, f'bit{bit_pos}')
                 results.append(label)
-        return results if results else ['无']
+        return results if results else ['None']
 
     def resolve_status_mask(self, status_byte):
         """解析 status_mask 字节，返回各 bit 的含义列表（从 config 读取）"""
@@ -215,7 +217,7 @@ class DTCManager:
             if status_byte & (1 << bit_pos):
                 label = self._status_mask_bits.get(bit_pos, f'bit{bit_pos}')
                 results.append(label)
-        return results if results else ['无']
+        return results if results else ['None']
 
 
 def load_dtc_config():
@@ -265,6 +267,12 @@ def load_dtc_config():
     # 解析状态掩码位定义
     status_mask = {int(k.replace('bit', '')): cfg.get('status_mask', k) for k in cfg['status_mask']}
 
+    # 解析故障码含义
+    fault_codes = {}
+    if cfg.has_section('fault_codes'):
+        for key in cfg['fault_codes']:
+            fault_codes[int(key, 0)] = cfg.get('fault_codes', key)
+
     return {
         'can_ids': can_ids,
         'group1_header': group1_header,
@@ -272,4 +280,5 @@ def load_dtc_config():
         'group2_entries': group2_entries,
         'dtc_type': dtc_type,
         'status_mask': status_mask,
+        'fault_codes': fault_codes,
     }

@@ -200,8 +200,8 @@ class CalibrationManager:
         if len(data) >= 12:
             horizontal_raw = struct.unpack('>f', data[4:8])[0]
             vertical_raw = struct.unpack('>f', data[8:12])[0]
-            self._log(f"  水平偏差角度: {horizontal_raw:.2f}°", "OK")
-            self._log(f"  垂直偏差角度: {vertical_raw:.2f}°", "OK")
+            self._log(f"  水平偏差角度: {horizontal_raw:.3f}°", "OK")
+            self._log(f"  垂直偏差角度: {vertical_raw:.3f}°", "OK")
 
     def _read_cal_params(self, radar_index):
         _, radar_name, section = _RADAR_INFO[radar_index]
@@ -231,10 +231,10 @@ class CalibrationManager:
             return None
 
         self._log(f"[OK] 从配置文件读取{radar_name}参数: "
-                  f"vh={params['vehicle_height']:.2f} x={params['x_offset']:.2f} "
-                  f"y={params['y_offset']:.2f} z={params['z_offset']:.2f} "
-                  f"yaw={params['yaw_angle']:.2f} pitch={params['pitch_angle']:.2f} "
-                  f"roll={params['roll_angle']:.2f}", "OK")
+                  f"vh={params['vehicle_height']:.3f} x={params['x_offset']:.3f} "
+                  f"y={params['y_offset']:.3f} z={params['z_offset']:.3f} "
+                  f"yaw={params['yaw_angle']:.3f} pitch={params['pitch_angle']:.3f} "
+                  f"roll={params['roll_angle']:.3f}", "OK")
         return params
 
     def send_params(self, radar_index):
