@@ -55,7 +55,7 @@ def _clean_val(cfg, section, key):
     return val.strip()
 
 # 参数数据格式：7个float（大端序）
-PARAM_STRUCT = struct.Struct('>fffffff')
+PARAM_STRUCT = struct.Struct('>iiiiiii')
 
 RESULT_STATUS_MAP = {
     1: "结果合格",
@@ -200,8 +200,8 @@ class CalibrationManager:
         if len(data) >= 12:
             horizontal_raw = struct.unpack('>f', data[4:8])[0]
             vertical_raw = struct.unpack('>f', data[8:12])[0]
-            self._log(f"  水平偏差角度: {horizontal_raw:.2f}°", "OK")
-            self._log(f"  垂直偏差角度: {vertical_raw:.2f}°", "OK")
+            self._log(f"  水平偏差角度: {horizontal_raw:.3f}°", "OK")
+            self._log(f"  垂直偏差角度: {vertical_raw:.3f}°", "OK")
 
     def _read_cal_params(self, radar_index):
         _, radar_name, section = _RADAR_INFO[radar_index]
@@ -231,10 +231,10 @@ class CalibrationManager:
             return None
 
         self._log(f"[OK] 从配置文件读取{radar_name}参数: "
-                  f"vh={params['vehicle_height']:.2f} x={params['x_offset']:.2f} "
-                  f"y={params['y_offset']:.2f} z={params['z_offset']:.2f} "
-                  f"yaw={params['yaw_angle']:.2f} pitch={params['pitch_angle']:.2f} "
-                  f"roll={params['roll_angle']:.2f}", "OK")
+                  f"vh={params['vehicle_height']:.3f} x={params['x_offset']:.3f} "
+                  f"y={params['y_offset']:.3f} z={params['z_offset']:.3f} "
+                  f"yaw={params['yaw_angle']:.3f} pitch={params['pitch_angle']:.3f} "
+                  f"roll={params['roll_angle']:.3f}", "OK")
         return params
 
     def send_params(self, radar_index):
@@ -248,11 +248,11 @@ class CalibrationManager:
         send_id = self._can_ids[f'{key}_param_send']
         recv_id = self._can_ids[f'{key}_param_recv']
 
-        # 构建参数数据包
+        # 构建参数数据包（统一 *1000 取整下发）
         packed = PARAM_STRUCT.pack(
-            params['vehicle_height'],
-            params['x_offset'], params['y_offset'], params['z_offset'],
-            params['yaw_angle'], params['pitch_angle'], params['roll_angle'],
+            int(params['vehicle_height'] * 1000),
+            int(params['x_offset'] * 1000), int(params['y_offset'] * 1000), int(params['z_offset'] * 1000),
+            int(params['yaw_angle'] * 1000), int(params['pitch_angle'] * 1000), int(params['roll_angle'] * 1000),
         )
         data = [0x01] + list(packed) + [0x00] * 35
 
