@@ -95,11 +95,11 @@ BO_ 1632 CAL_Cfg_RR: 64 Vector__XXX
  SG_ CAL_reserve2_RR : 263|64@0+ (1,0) [0|1.84467440737096E+019] ""  RR
  SG_ CAL_reserve1_RR : 239|24@0+ (1,0) [0|16777215] ""  RR
  SG_ CAL_radar_z_offset_RR : 111|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RR
- SG_ CAL_radar_yaw_angle_RR : 143|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RR
+ SG_ CAL_radar_yaw_angle_RR : 143|32@0- (0.0001,0) [-214748.3648|214748.3647] ""  RR
  SG_ CAL_radar_y_offset_RR : 79|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RR
  SG_ CAL_radar_x_offset_RR : 47|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RR
- SG_ CAL_radar_roll_angle_RR : 207|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RR
- SG_ CAL_radar_pitch_angle_RR : 175|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RR
+ SG_ CAL_radar_roll_angle_RR : 207|32@0- (0.0001,0) [-2147483.648|2147483.647] ""  RR
+ SG_ CAL_radar_pitch_angle_RR : 175|32@0- (0.0001,0) [-2147483.648|2147483.647] ""  RR
 
 BO_ 1120 CAL_Cfg_RL: 64 Vector__XXX
  SG_ CAL_calib_id_RL : 7|8@0+ (1,0) [0|255] "" Vector__XXX
@@ -110,11 +110,11 @@ BO_ 1120 CAL_Cfg_RL: 64 Vector__XXX
  SG_ CAL_reserve2_RL : 263|64@0+ (1,0) [0|1.84467440737096E+019] ""  RL
  SG_ CAL_reserve1_RL : 239|24@0+ (1,0) [0|16777215] ""  RL
  SG_ CAL_radar_z_offset_RL : 111|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RL
- SG_ CAL_radar_yaw_angle_RL : 143|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RL
+ SG_ CAL_radar_yaw_angle_RL : 143|32@0- (0.0001,0) [-214748.3648|214748.3647] ""  RL
  SG_ CAL_radar_y_offset_RL : 79|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RL
  SG_ CAL_radar_x_offset_RL : 47|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RL
- SG_ CAL_radar_roll_angle_RL : 207|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RL
- SG_ CAL_radar_pitch_angle_RL : 175|32@0- (0.001,0) [-2147483.648|2147483.647] ""  RL
+ SG_ CAL_radar_roll_angle_RL : 207|32@0- (0.0001,0) [-214748.3648|214748.3647] ""  RL
+ SG_ CAL_radar_pitch_angle_RL : 175|32@0- (0.0001,0) [-214748.3648|214748.3647] ""  RL
 
 BO_ 608 CAL_Cfg_FR: 64 Vector__XXX
  SG_ CAL_calib_id_FR : 7|8@0+ (1,0) [0|255] "" Vector__XXX
@@ -125,11 +125,11 @@ BO_ 608 CAL_Cfg_FR: 64 Vector__XXX
  SG_ CAL_reserve2_FR : 263|64@0+ (1,0) [0|1.84467440737096E+019] ""  FR
  SG_ CAL_reserve1_FR : 239|24@0+ (1,0) [0|16777215] ""  FR
  SG_ CAL_radar_z_offset_FR : 111|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FR
- SG_ CAL_radar_yaw_angle_FR : 143|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FR
+ SG_ CAL_radar_yaw_angle_FR : 143|32@0- (0.0001,0) [-214748.3648|214748.3647] ""  FR
  SG_ CAL_radar_y_offset_FR : 79|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FR
  SG_ CAL_radar_x_offset_FR : 47|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FR
- SG_ CAL_radar_roll_angle_FR : 207|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FR
- SG_ CAL_radar_pitch_angle_FR : 175|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FR
+ SG_ CAL_radar_roll_angle_FR : 207|32@0- (0.0001,0) [-214748.3648|214748.3647] ""  FR
+ SG_ CAL_radar_pitch_angle_FR : 175|32@0- (0.0001,0) [-214748.3648|214748.3647] ""  FR
 
 BO_ 96 CAL_Cfg_FL: 64 Vector__XXX
  SG_ CAL_calib_id_FL : 7|8@0+ (1,0) [0|255] "" Vector__XXX
@@ -140,11 +140,11 @@ BO_ 96 CAL_Cfg_FL: 64 Vector__XXX
  SG_ CAL_reserve2_FL : 263|64@0+ (1,0) [0|1.84467440737096E+019] ""  FL
  SG_ CAL_reserve1_FL : 239|24@0+ (1,0) [0|16777215] ""  FL
  SG_ CAL_radar_z_offset_FL : 111|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FL
- SG_ CAL_radar_yaw_angle_FL : 143|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FL
+ SG_ CAL_radar_yaw_angle_FL : 143|32@0- (0.0001,0) [-214748.3648|214748.3647] ""  FL
  SG_ CAL_radar_y_offset_FL : 79|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FL
  SG_ CAL_radar_x_offset_FL : 47|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FL
- SG_ CAL_radar_roll_angle_FL : 207|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FL
- SG_ CAL_radar_pitch_angle_FL : 175|32@0- (0.001,0) [-2147483.648|2147483.647] ""  FL
+ SG_ CAL_radar_roll_angle_FL : 207|32@0- (0.0001,0) [-214748.3648|214748.3647] ""  FL
+ SG_ CAL_radar_pitch_angle_FL : 175|32@0- (0.0001,0) [-214748.3648|214748.3647] ""  FL
 
 BO_ 67 TSYNC_RR: 64 Vector__XXX
  SG_ TSYNC_Status_RR : 127|8@0+ (1,0) [0|255] ""  RR
@@ -224,44 +224,44 @@ BA_ "VFrameFormat" BO_ 1935 14;
 BA_ "VFrameFormat" BO_ 1871 14;
 BA_ "VFrameFormat" BO_ 1932 14;
 BA_ "VFrameFormat" BO_ 1868 14;
-BA_ "GenMsgSendType" BO_ 16 0;
 BA_ "GenMsgCycleTime" BO_ 16 10;
+BA_ "GenMsgSendType" BO_ 16 0;
 BA_ "VFrameFormat" BO_ 16 14;
-BA_ "GenMsgCycleTime" BO_ 1633 10000;
 BA_ "GenMsgSendType" BO_ 1633 0;
+BA_ "GenMsgCycleTime" BO_ 1633 10000;
 BA_ "VFrameFormat" BO_ 1633 14;
-BA_ "GenMsgCycleTime" BO_ 1121 10000;
 BA_ "GenMsgSendType" BO_ 1121 0;
+BA_ "GenMsgCycleTime" BO_ 1121 10000;
 BA_ "VFrameFormat" BO_ 1121 14;
-BA_ "GenMsgCycleTime" BO_ 609 10000;
 BA_ "GenMsgSendType" BO_ 609 0;
+BA_ "GenMsgCycleTime" BO_ 609 10000;
 BA_ "VFrameFormat" BO_ 609 14;
-BA_ "GenMsgCycleTime" BO_ 97 10000;
 BA_ "GenMsgSendType" BO_ 97 0;
+BA_ "GenMsgCycleTime" BO_ 97 10000;
 BA_ "VFrameFormat" BO_ 97 14;
-BA_ "GenMsgCycleTime" BO_ 1632 10000;
 BA_ "GenMsgSendType" BO_ 1632 0;
+BA_ "GenMsgCycleTime" BO_ 1632 10000;
 BA_ "VFrameFormat" BO_ 1632 14;
-BA_ "GenMsgCycleTime" BO_ 1120 10000;
 BA_ "GenMsgSendType" BO_ 1120 0;
+BA_ "GenMsgCycleTime" BO_ 1120 10000;
 BA_ "VFrameFormat" BO_ 1120 14;
-BA_ "GenMsgCycleTime" BO_ 608 10000;
 BA_ "GenMsgSendType" BO_ 608 0;
+BA_ "GenMsgCycleTime" BO_ 608 10000;
 BA_ "VFrameFormat" BO_ 608 14;
-BA_ "GenMsgCycleTime" BO_ 96 10000;
 BA_ "GenMsgSendType" BO_ 96 0;
+BA_ "GenMsgCycleTime" BO_ 96 10000;
 BA_ "VFrameFormat" BO_ 96 14;
-BA_ "GenMsgCycleTime" BO_ 67 396;
 BA_ "GenMsgSendType" BO_ 67 0;
+BA_ "GenMsgCycleTime" BO_ 67 396;
 BA_ "VFrameFormat" BO_ 67 14;
-BA_ "GenMsgCycleTime" BO_ 66 396;
 BA_ "GenMsgSendType" BO_ 66 0;
+BA_ "GenMsgCycleTime" BO_ 66 396;
 BA_ "VFrameFormat" BO_ 66 14;
-BA_ "GenMsgCycleTime" BO_ 65 396;
 BA_ "GenMsgSendType" BO_ 65 0;
+BA_ "GenMsgCycleTime" BO_ 65 396;
 BA_ "VFrameFormat" BO_ 65 14;
-BA_ "GenMsgCycleTime" BO_ 64 396;
 BA_ "GenMsgSendType" BO_ 64 0;
+BA_ "GenMsgCycleTime" BO_ 64 396;
 BA_ "VFrameFormat" BO_ 64 14;
 BA_ "GenSigStartValue" SG_ 16 HostYawRate 2048;
 BA_ "GenSigStartValue" SG_ 16 HostVel 2000;

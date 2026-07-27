@@ -231,10 +231,10 @@ class CalibrationManager:
             return None
 
         self._log(f"[OK] 从配置文件读取{radar_name}参数: "
-                  f"vh={params['vehicle_height']:.3f} x={params['x_offset']:.3f} "
-                  f"y={params['y_offset']:.3f} z={params['z_offset']:.3f} "
-                  f"yaw={params['yaw_angle']:.3f} pitch={params['pitch_angle']:.3f} "
-                  f"roll={params['roll_angle']:.3f}", "OK")
+                  f"vh={params['vehicle_height']:.4f} x={params['x_offset']:.4f} "
+                  f"y={params['y_offset']:.4f} z={params['z_offset']:.4f} "
+                  f"yaw={params['yaw_angle']:.4f} pitch={params['pitch_angle']:.4f} "
+                  f"roll={params['roll_angle']:.4f}", "OK")
         return params
 
     def send_params(self, radar_index):
@@ -252,7 +252,7 @@ class CalibrationManager:
         packed = PARAM_STRUCT.pack(
             int(params['vehicle_height'] * 1000),
             int(params['x_offset'] * 1000), int(params['y_offset'] * 1000), int(params['z_offset'] * 1000),
-            int(params['yaw_angle'] * 1000), int(params['pitch_angle'] * 1000), int(params['roll_angle'] * 1000),
+            int(params['yaw_angle'] * 10000), int(params['pitch_angle'] * 10000), int(params['roll_angle'] * 10000),
         )
         data = [0x01] + list(packed) + [0x00] * 35
 

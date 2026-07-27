@@ -134,7 +134,7 @@ class RadarDiagnosticsGUI:
                  fg=ORANGE_ACCENT, bg=BG_CARD).grid(row=0, column=4, sticky=tk.W, pady=4, padx=(0, 8))
         self.data_bitrate_var = tk.StringVar(value="2000000")
         self.data_bitrate_combo = ttk.Combobox(grid, textvariable=self.data_bitrate_var, width=10,
-                                               values=["500000", "1000000", "2000000", "5000000"])
+                                               values=["500000", "1000000", "2000000", "4000000"])
         self.data_bitrate_combo.grid(row=0, column=5, sticky=tk.W, pady=4, padx=(0, 20))
 
         # 连接、刷新通道按钮
