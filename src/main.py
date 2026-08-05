@@ -16,9 +16,9 @@ sys.path.insert(0, os.path.join(_BASE_DIR, 'lib'))
 
 from gui_main import RadarDiagnosticsGUI
 from can_config import check_can_interfaces
-from calibration import CalibrationManager, _load_can_ids, OAResultReceiver
+from calibration import CalibrationManager, OAResultReceiver
 from sync import TimeSyncManager
-from dtc import DTCManager, load_dtc_config
+from dtc import DTCManager
 from ota.version_query import query_version, DID_SOFTWARE, DID_HARDWARE
 import can
 from bus_recorder import BusRecorder
@@ -171,32 +171,9 @@ class Application:
             self._bus = None
             self.gui.log("[INFO] CAN 总线已断开", "INFO")
         
-        ids = _load_can_ids()
-        # 配置 CAN 总线过滤器，标定相关 CAN ID
-        filters = [
-            {"can_id": ids['left_front_static_recv'], "can_mask": 0x7FF, "extended": False},
-            {"can_id": ids['right_front_static_recv'], "can_mask": 0x7FF, "extended": False},
-            {"can_id": ids['left_rear_static_recv'], "can_mask": 0x7FF, "extended": False},
-            {"can_id": ids['right_rear_static_recv'], "can_mask": 0x7FF, "extended": False},
-            {"can_id": ids['left_front_param_recv'], "can_mask": 0x7FF, "extended": False},
-            {"can_id": ids['right_front_param_recv'], "can_mask": 0x7FF, "extended": False},
-            {"can_id": ids['left_rear_param_recv'], "can_mask": 0x7FF, "extended": False},
-            {"can_id": ids['right_rear_param_recv'], "can_mask": 0x7FF, "extended": False},
-        ]
-
-        # 版本号读取相关 CAN ID
-        for can_id in (0x74E, 0x74F, 0x78E, 0x78F):
-            filters.append({"can_id": can_id, "can_mask": 0x7FF, "extended": False})
-
-        dtc_ids = load_dtc_config()['can_ids']
-        # 配置 CAN 总线过滤器，DTC 相关 CAN ID
-        for key, can_id in dtc_ids.items():
-            filters.append({"can_id": can_id, "can_mask": 0x7FF, "extended": False})
-            
-        # OA 结果 CAN ID
-        for oa_id in (1502, 1470, 1454, 1486):
-            filters.append({"can_id": oa_id, "can_mask": 0x7FF, "extended": False})
-        self.gui.log(f"[INFO] CAN 总线过滤器: {filters}", "INFO")
+        # 不启用硬件过滤：kvaser canlib 在 Linux 下不支持接受过滤器
+        # 全部 CAN 消息接收后由各功能模块按 ID 自行筛选
+        filters = [{"can_id": 0, "can_mask": 0, "extended": False}]
         
         # 连接 CAN 总线，整个项目的唯一实例!!!!
         self._bus = can.interface.Bus(
@@ -266,10 +243,8 @@ class Application:
         if not bitrate or not data_bitrate:
             self.gui.log('[OA WARN] 请先在 CAN 配置中设置波特率', 'ERROR')
             return
-        # 第二通道只监听 OA 4 个 CAN ID
-        oa_filters = [{"can_id": cid, "can_mask": 0x7FF, "extended": False}
-                      for cid in (1502, 1470, 1454, 1486)]
-        self.gui.log(f"[INFO] 第二通道 CAN 过滤器: {oa_filters}", "INFO")
+        # 与主通道一致，不启用硬件过滤，全部接收
+        oa_filters = [{"can_id": 0, "can_mask": 0, "extended": False}]
         try:
             self._oa_bus2 = can.interface.Bus(
                 interface="kvaser",
