@@ -207,7 +207,11 @@ class Application:
         self._on_oa_disconnect2()
         self.gui.download_log()  # 关闭前自动保存日志
         if self._bus is not None:
-            self._bus.shutdown()
+            try:
+                self._bus.shutdown()
+            except Exception:
+                # 硬件已拔出等异常场景下忽略关闭错误，保证窗口能正常销毁
+                pass
         self.root.destroy()
 
     def _on_oa_start(self):
