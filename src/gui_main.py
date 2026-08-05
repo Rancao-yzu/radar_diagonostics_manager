@@ -292,7 +292,7 @@ class RadarDiagnosticsGUI:
         changed_entries = []
 
         row_idx = 0
-        for node in ['FL', 'FR',]:# 'RL', 'RR'注释，暂时不使用后角
+        for node in ['FL', 'FR', 'RL', 'RR']:
             # 遍历每个节点的 DTC 条目
             entries = all_entries.get(node, [])
             for entry in entries:
