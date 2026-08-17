@@ -549,6 +549,13 @@ class RadarDiagnosticsGUI:
                                             font=('Microsoft YaHei', 9))
         self.chk_time_sync.pack(side=tk.RIGHT, padx=(0, 6))
 
+        # 版本说明按钮：位于时间同步按钮左边，点击弹窗显示版本与更新说明
+        self.btn_version = _FlatButton(header, text="版本说明",bg=ORANGE_PRIMARY,
+                                        hover=ORANGE_ACCENT, fg=BG_CARD,
+                                        width=60, height=24,
+                                        font=('Microsoft YaHei', 9))
+        self.btn_version.pack(side=tk.RIGHT, padx=(0, 6))
+
         # 日志颜色图例
         legend = tk.Frame(header, bg=BG_CARD)
         legend.pack(side=tk.RIGHT)
@@ -622,6 +629,11 @@ class RadarDiagnosticsGUI:
         self.btn_cal.set_active(False)
 
     # ---- 外部接口 ----
+
+    def _show_version_info(self):
+        """弹窗显示版本与更新说明（读取 config/config_updata.ini）"""
+        from gui_version import show_version_dialog
+        show_version_dialog(self.root)
 
     def set_channel_list(self, channels):
         """设置 CAN 通道列表"""

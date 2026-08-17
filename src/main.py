@@ -85,6 +85,9 @@ class Application:
         self.gui.btn_ver_fl._command = lambda: self._on_query_version('FL')
         self.gui.btn_ver_fr._command = lambda: self._on_query_version('FR')
 
+        # 版本说明弹窗按钮
+        self.gui.btn_version._command = self.gui._show_version_info
+
         # 窗口关闭回调
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
