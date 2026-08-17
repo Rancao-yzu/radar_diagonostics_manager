@@ -5,7 +5,7 @@ import os
 import tkinter as tk
 from tkinter import ttk
 
-from gui_styles import ORANGE_PRIMARY, ORANGE_ACCENT, BG_CARD, TEXT_DARK
+from .gui_styles import ORANGE_PRIMARY, ORANGE_ACCENT, BG_CARD, TEXT_DARK
 
 
 def _parse_versions(config_path):
@@ -46,7 +46,7 @@ def show_version_dialog(parent, config_path=None):
     """弹出模态窗口展示版本与更新说明"""
     if config_path is None:
         config_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
             'config', 'config_updata.ini')
 
     versions = _parse_versions(config_path)

@@ -14,7 +14,7 @@ else:
     _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(_BASE_DIR, 'lib'))
 
-from gui_main import RadarDiagnosticsGUI
+from ui.gui_main import RadarDiagnosticsGUI
 from can_config import check_can_interfaces
 from calibration import CalibrationManager, OAResultReceiver
 from sync import TimeSyncManager

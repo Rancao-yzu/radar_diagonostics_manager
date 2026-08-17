@@ -8,9 +8,9 @@ from tkinter import ttk
 from datetime import datetime
 from PIL import Image, ImageTk
 
-from gui_styles import (ORANGE_PRIMARY, ORANGE_LIGHT, BG_CARD, TEXT_DARK,ORANGE_ACCENT, 
-                        CARD_PAD, SECTION_GAP, LOG_COLORS,
-                        _FlatButton, _SideButton, setup_styles)
+from .gui_styles import (ORANGE_PRIMARY, ORANGE_LIGHT, BG_CARD, TEXT_DARK,ORANGE_ACCENT,
+                         CARD_PAD, SECTION_GAP, LOG_COLORS,
+                         _FlatButton, _SideButton, setup_styles)
 
 
 class RadarDiagnosticsGUI:
@@ -23,7 +23,7 @@ class RadarDiagnosticsGUI:
         self.root.configure(bg=BG_CARD)
 
         # 使用 iconphoto 方法设置窗口图标（跨平台兼容，Linux/Windows/macOS 均支持）
-        icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'images', 'tool.png')
+        icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'images', 'tool.png')
         if os.path.exists(icon_path):
             icon_img = ImageTk.PhotoImage(Image.open(icon_path))
             self.root.iconphoto(True, icon_img)
@@ -61,7 +61,7 @@ class RadarDiagnosticsGUI:
         logo_frame = tk.Frame(self.sidebar, bg=BG_CARD)
         logo_frame.pack(fill=tk.X, pady=(8, 0))
 
-        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../images/logo.png')
+        logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '../images/logo.png')
         if not os.path.exists(logo_path):
             logo_path = './images/logo.png'
         img = Image.open(logo_path)
@@ -632,7 +632,7 @@ class RadarDiagnosticsGUI:
 
     def _show_version_info(self):
         """弹窗显示版本与更新说明（读取 config/config_updata.ini）"""
-        from gui_version import show_version_dialog
+        from .gui_version import show_version_dialog
         show_version_dialog(self.root)
 
     def set_channel_list(self, channels):
