@@ -54,7 +54,7 @@ def _clean_val(cfg, section, key):
             val = val[:idx]
     return val.strip()
 
-# 参数数据格式：7个float（大端序）
+# 参数数据格式（大端序）
 PARAM_STRUCT = struct.Struct('>iiiiiii')
 
 RESULT_STATUS_MAP = {
