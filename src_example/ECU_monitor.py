@@ -3,25 +3,48 @@ import time
 import struct
 from threading import Thread, Event
 
+# 参数数据格式（大端序，与主程序calibration.py保持一致）
+PARAM_STRUCT = struct.Struct('>iiiiiii')
+
 class RadarECUSimulator:
     def __init__(self, bus):
         self.bus = bus
         self.running = Event()
         self.running.set()
         
+        # 雷达CAN ID配置（与config_c.ini保持一致）
+        self.radar_configs = {
+            'left_front': {
+                'name': '左前',
+                'static_send': 0x61, 'static_recv': 0x71,
+                'param_send': 0x60, 'param_recv': 0x70,
+            },
+            'right_front': {
+                'name': '右前',
+                'static_send': 0x261, 'static_recv': 0x271,
+                'param_send': 0x260, 'param_recv': 0x270,
+            },
+            'left_rear': {
+                'name': '左后',
+                'static_send': 0x461, 'static_recv': 0x471,
+                'param_send': 0x460, 'param_recv': 0x470,
+            },
+            'right_rear': {
+                'name': '右后',
+                'static_send': 0x661, 'static_recv': 0x671,
+                'param_send': 0x660, 'param_recv': 0x670,
+            },
+        }
+
         # 静态标定结果配置
         self.calibration_results = {
-            'left': {
+            key: {
                 'cal_result': 0x01,       # 0x01：结果合格
                 'error_code': 0x08        # 0x08：执行成功
-            },
-            'right': {
-                'cal_result': 0x01,       # 0x01：结果合格
-                'error_code': 0x08        # 0x08：执行成功
-            }
+            } for key in self.radar_configs
         }
         
-    def build_calibration_response(self, radar_side='left'):
+    def build_calibration_response(self, radar_side='left_front'):
         """
         构建静态标定响应数据
         格式：04 + 标定结果(2字节) + 标定错误码(2字节) = 5字节
@@ -43,24 +66,21 @@ class RadarECUSimulator:
         """
         print(f"\n  ========== 接收到的{radar_side}雷达外参解析 ==========")
         
-        if len(data) < 28:  # 至少需要前28字节（7个float）
+        if len(data) < 28:  # 至少需要前28字节（7个int32）
             print(f"  [错误] 外参数据长度不足: {len(data)}字节, 需要至少28字节")
             return
         
-        offset = 0
-        vehicle_height = struct.unpack_from('>f', data, offset)[0]
-        offset += 4
-        radar_x_offset = struct.unpack_from('>f', data, offset)[0]
-        offset += 4
-        radar_y_offset = struct.unpack_from('>f', data, offset)[0]
-        offset += 4
-        radar_z_offset = struct.unpack_from('>f', data, offset)[0]
-        offset += 4
-        radar_yaw_angle = struct.unpack_from('>f', data, offset)[0]
-        offset += 4
-        radar_pitch_angle = struct.unpack_from('>f', data, offset)[0]
-        offset += 4
-        radar_roll_angle = struct.unpack_from('>f', data, offset)[0]
+        # 解析7个int32（大端），与主程序PARAM_STRUCT一致
+        vh, x, y, z, yaw, pitch, roll = PARAM_STRUCT.unpack_from(data, 0)
+        
+        # 还原实际值：高度/偏移放大1000倍，角度放大10000倍
+        vehicle_height = vh / 1000.0
+        radar_x_offset = x / 1000.0
+        radar_y_offset = y / 1000.0
+        radar_z_offset = z / 1000.0
+        radar_yaw_angle = yaw / 10000.0
+        radar_pitch_angle = pitch / 10000.0
+        radar_roll_angle = roll / 10000.0
         
         print(f"  可通行高度(车辆高度): {vehicle_height:.3f} m")
         print(f"  雷达纵向安装偏差:     {radar_x_offset:.3f} m (向前为正)")
@@ -92,44 +112,32 @@ class RadarECUSimulator:
     
     def handle_static_calibration(self, msg):
         """处理静态标定命令"""
-        if msg.arbitration_id == 0x61 and msg.data[0] == 0x02:
-            print(f"\n收到左雷达静态标定启动命令")
-            
-            # 1. 发送确认响应 02 01
-            self.send_safe(0x71, bytes([0x02, 0x01]))
-            
-            # 2. 延时模拟标定过程
-            time.sleep(0.1)
-            
-            # 3. 发送标定结果
-            result_data = self.build_calibration_response('left')
-            self.send_safe(0x71, result_data)
-            
-            result = self.calibration_results['left']
-            print(f"  [预期] 标定结果=0x{result['cal_result']:04X}(结果合格), 错误码=0x{result['error_code']:04X}(执行成功)")
-            
-        elif msg.arbitration_id == 0x261 and msg.data[0] == 0x02:
-            print(f"\n收到右雷达静态标定启动命令")
-            
-            # 1. 发送确认响应 02 01
-            self.send_safe(0x271, bytes([0x02, 0x01]))
-            
-            # 2. 延时模拟标定过程
-            time.sleep(0.1)
-            
-            # 3. 发送标定结果
-            result_data = self.build_calibration_response('right')
-            self.send_safe(0x271, result_data)
-            
-            result = self.calibration_results['right']
-            print(f"  [预期] 标定结果=0x{result['cal_result']:04X}(结果合格), 错误码=0x{result['error_code']:04X}(执行成功)")
+        for key, cfg in self.radar_configs.items():
+            if msg.arbitration_id == cfg['static_send'] and msg.data[0] == 0x02:
+                print(f"\n收到{cfg['name']}雷达静态标定启动命令")
+                
+                # 1. 发送确认响应 02 01
+                self.send_safe(cfg['static_recv'], bytes([0x02, 0x01]))
+                
+                # 2. 延时模拟标定过程
+                time.sleep(0.1)
+                
+                # 3. 发送标定结果
+                result_data = self.build_calibration_response(key)
+                self.send_safe(cfg['static_recv'], result_data)
+                
+                result = self.calibration_results[key]
+                print(f"  [预期] 标定结果=0x{result['cal_result']:04X}(结果合格), 错误码=0x{result['error_code']:04X}(执行成功)")
+                break
     
     def handle_extrinsic_calibration(self, msg):
         """处理外参标定命令"""
-        # 左雷达
-        if msg.arbitration_id == 0x60:
+        for cfg in self.radar_configs.values():
+            if msg.arbitration_id != cfg['param_send']:
+                continue
+            
             if msg.data[0] == 0x01:
-                print(f"\n收到左雷达外参下发命令")
+                print(f"\n收到{cfg['name']}雷达外参下发命令")
                 
                 # 总数据应该是64字节：0x01 + 63字节参数表
                 if len(msg.data) >= 64:
@@ -138,45 +146,20 @@ class RadarECUSimulator:
                     print(f"  [接收] 外参原始数据({len(received_params)}字节)={received_params.hex()}")
                     
                     # 解析并打印外参
-                    self.parse_and_print_extrinsic_params('左', received_params)
+                    self.parse_and_print_extrinsic_params(cfg['name'], received_params)
                 else:
                     print(f"  [警告] 外参数据长度不足: {len(msg.data)}字节, 需要64字节")
                     print(f"  [调试] 接收到的完整数据: {msg.data.hex()}")
                 
                 # 响应
-                self.send_safe(0x70, bytes([0x01, 0x01]))
+                self.send_safe(cfg['param_recv'], bytes([0x01, 0x01]))
                 print(f"  [响应] 外参下发成功")
                 
             elif msg.data[0] == 0x02:
-                print(f"\n收到左雷达清除参数命令")
-                self.send_safe(0x70, bytes([0x02, 0x01]))
+                print(f"\n收到{cfg['name']}雷达清除参数命令")
+                self.send_safe(cfg['param_recv'], bytes([0x02, 0x01]))
                 print(f"  [响应] 参数清除成功")
-        
-        # 右雷达
-        elif msg.arbitration_id == 0x260:
-            if msg.data[0] == 0x01:
-                print(f"\n收到右雷达外参下发命令")
-                
-                # 总数据应该是64字节：0x01 + 63字节参数表
-                if len(msg.data) >= 64:
-                    # 跳过0x01，取后面的63字节参数表
-                    received_params = msg.data[1:64]
-                    print(f"  [接收] 外参原始数据({len(received_params)}字节)={received_params.hex()}")
-                    
-                    # 解析并打印外参
-                    self.parse_and_print_extrinsic_params('右', received_params)
-                else:
-                    print(f"  [警告] 外参数据长度不足: {len(msg.data)}字节, 需要64字节")
-                    print(f"  [调试] 接收到的完整数据: {msg.data.hex()}")
-                
-                # 响应
-                self.send_safe(0x270, bytes([0x01, 0x01]))
-                print(f"  [响应] 外参下发成功")
-                
-            elif msg.data[0] == 0x02:
-                print(f"\n收到右雷达清除参数命令")
-                self.send_safe(0x270, bytes([0x02, 0x01]))
-                print(f"  [响应] 参数清除成功")
+            break
     
     def run(self):
         """主循环，监听CAN消息"""
@@ -191,9 +174,12 @@ class RadarECUSimulator:
                 if msg:
                     print(f"\n[RECV] ID=0x{msg.arbitration_id:X}, Data({len(msg.data)}字节)={msg.data.hex()}")
                     
-                    if msg.arbitration_id in [0x61, 0x261]:
+                    # 按配置的CAN ID分发：静态标定 / 参数标定
+                    static_send_ids = [cfg['static_send'] for cfg in self.radar_configs.values()]
+                    param_send_ids = [cfg['param_send'] for cfg in self.radar_configs.values()]
+                    if msg.arbitration_id in static_send_ids:
                         self.handle_static_calibration(msg)
-                    elif msg.arbitration_id in [0x60, 0x260]:
+                    elif msg.arbitration_id in param_send_ids:
                         self.handle_extrinsic_calibration(msg)
                         
             except Exception as e:
