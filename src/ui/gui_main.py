@@ -72,7 +72,7 @@ class RadarDiagnosticsGUI:
         header = tk.Frame(self.sidebar, bg=BG_CARD)
         header.pack(fill=tk.X, pady=(4, 12))
 
-        tk.Label(header, text=" 雷达诊断管理 V1.5.4", font=('Microsoft YaHei', 12, 'bold italic'),
+        tk.Label(header, text=" 雷达诊断管理 V1.6.0", font=('Microsoft YaHei', 12, 'bold italic'),
                         fg=ORANGE_ACCENT, bg=BG_CARD).pack(anchor=tk.W)
 
         tk.Frame(self.sidebar, bg=ORANGE_LIGHT, height=1).pack(fill=tk.X, pady=(0, 12))
@@ -113,13 +113,21 @@ class RadarDiagnosticsGUI:
         grid = tk.Frame(inner, bg=BG_CARD)
         grid.pack(fill=tk.X)
 
-        # 通道选择
-        tk.Label(grid, text="Channel", font=('Microsoft YaHei', 9),
+        # 前角通道选择（通道1，FL/FR）
+        tk.Label(grid, text="前角通道", font=('Microsoft YaHei', 9),
                  fg=ORANGE_ACCENT, bg=BG_CARD).grid(row=0, column=0, sticky=tk.W, pady=4, padx=(0, 8))
         self.channel_var = tk.StringVar()
         self.channel_combo = ttk.Combobox(grid, textvariable=self.channel_var,
                                           width=45, state="readonly")
         self.channel_combo.grid(row=0, column=1, sticky=tk.W, pady=4, padx=(0, 20))
+
+        # 后角通道选择（通道2，RL/RR）
+        tk.Label(grid, text="后角通道", font=('Microsoft YaHei', 9),
+                 fg=ORANGE_ACCENT, bg=BG_CARD).grid(row=1, column=0, sticky=tk.W, pady=4, padx=(0, 8))
+        self.rear_channel_var = tk.StringVar()
+        self.rear_channel_combo = ttk.Combobox(grid, textvariable=self.rear_channel_var,
+                                               width=45, state="readonly")
+        self.rear_channel_combo.grid(row=1, column=1, sticky=tk.W, pady=4, padx=(0, 20))
 
         # 波特率选择
         tk.Label(grid, text="Bitrate", font=('Microsoft YaHei', 9),
@@ -419,30 +427,6 @@ class RadarDiagnosticsGUI:
         tk.Label(inner, text="OA 结果", font=('Microsoft YaHei', 11, 'bold'),
                  fg=TEXT_DARK, bg=BG_CARD).pack(anchor=tk.W, pady=(0, 10))
 
-        # 第二通道配置（OA 标定专用）
-        chan2_frame = tk.Frame(inner, bg=BG_CARD)
-        chan2_frame.pack(fill=tk.X, pady=(0, 8))
-
-        tk.Label(chan2_frame, text="第二通道（OA 标定专用）", font=('Microsoft YaHei', 12),
-                 fg=ORANGE_ACCENT, bg=BG_CARD).pack(side=tk.LEFT, padx=(0, 8))
-
-        self.oa_chan2_var = tk.StringVar()
-        self.oa_chan2_combo = ttk.Combobox(chan2_frame, textvariable=self.oa_chan2_var,
-                                            width=45, state="readonly")
-        self.oa_chan2_combo.pack(side=tk.LEFT, padx=(0, 10))
-
-        self.btn_oa_connect2 = _FlatButton(chan2_frame, text="连接通道2", bg=ORANGE_PRIMARY,
-                                            hover=ORANGE_ACCENT, width=100, height=32)
-        self.btn_oa_connect2.pack(side=tk.LEFT, padx=(0, 10))
-        self.btn_oa_disconnect2 = _FlatButton(chan2_frame, text="断开通道2", bg="#FFD8D8",
-                                               fg=ORANGE_PRIMARY, hover=ORANGE_LIGHT, width=100, height=32)
-        self.btn_oa_disconnect2.pack(side=tk.LEFT)
-        self.btn_oa_disconnect2.set_enabled(False)
-
-        self.oa_chan2_status_var = tk.StringVar(value="")
-        tk.Label(chan2_frame, textvariable=self.oa_chan2_status_var,
-                 font=('Microsoft YaHei', 9), fg="#2E7D32", bg=BG_CARD).pack(side=tk.LEFT, padx=(10, 0))
-
         # 操作按钮
         btn_frame = tk.Frame(inner, bg=BG_CARD)
         btn_frame.pack(fill=tk.X, pady=(0, 8))
@@ -505,22 +489,9 @@ class RadarDiagnosticsGUI:
         if running:
             self.btn_oa_start.set_enabled(False)
             self.oa_status_var.set("● 接收中")
-            # 运行时不允许操作第二通道连接
-            self.btn_oa_connect2.set_enabled(False)
-            self.btn_oa_disconnect2.set_enabled(False)
         else:
-            self.btn_oa_connect2.set_enabled(True)
             self.btn_oa_start.set_enabled(True)
             self.oa_status_var.set("● 未接收")
-
-    def oa_set_chan2_state(self, connected):
-        """设置第二通道连接状态"""
-        if connected:
-            self.btn_oa_disconnect2.set_enabled(True)
-            self.oa_chan2_status_var.set("● 已连接")
-        else:
-            self.btn_oa_disconnect2.set_enabled(False)
-            self.oa_chan2_status_var.set(" ")
 
     def _build_log_area(self):
         """构建日志区域：显示 CAN 通讯日志"""
@@ -633,11 +604,17 @@ class RadarDiagnosticsGUI:
         show_version_dialog(self.root)
 
     def set_channel_list(self, channels):
-        """设置 CAN 通道列表"""
-        self.channel_combo["values"] = channels
-        self.oa_chan2_combo["values"] = channels
-        if channels and not self.channel_var.get():
+        """设置 CAN 通道列表（前角/后角下拉框同步，含 None 表示不连接）"""
+        # 在最前面插入 None 选项，供主动选择不连接某通道
+        values = ["None"] + list(channels)
+        self.channel_combo["values"] = values
+        self.rear_channel_combo["values"] = values
+        if channels and (not self.channel_var.get() or self.channel_var.get() == "None"):
+            # 前角默认选第一个检测到的通道
             self.channel_var.set(channels[0])
+        # 后角默认 None（不连），由用户按需选择
+        if not self.rear_channel_var.get():
+            self.rear_channel_var.set("None")
 
     def set_connection_status(self, connected):
         """设置连接状态显示"""
@@ -653,14 +630,18 @@ class RadarDiagnosticsGUI:
         return self.channel_var.get(), self.bitrate_var.get(), self.data_bitrate_var.get()
 
     def get_channel_number(self):
-        """获取当前选择的 CAN 通道编号"""
+        """获取当前选择的前角 CAN 通道编号，选 None 返回空串"""
         channel_str = self.channel_var.get()
-        return channel_str.split(":")[0].strip() if channel_str else ""
+        if not channel_str or channel_str == "None":
+            return ""
+        return channel_str.split(":")[0].strip()
 
-    def oa_get_channel2_number(self):
-        """获取 OA 第二通道编号"""
-        channel_str = self.oa_chan2_var.get()
-        return channel_str.split(":")[0].strip() if channel_str else ""
+    def get_rear_channel_number(self):
+        """获取当前选择的后角 CAN 通道编号，选 None 返回空串"""
+        channel_str = self.rear_channel_var.get()
+        if not channel_str or channel_str == "None":
+            return ""
+        return channel_str.split(":")[0].strip()
 
     def log(self, message, tag="INFO"):
         """

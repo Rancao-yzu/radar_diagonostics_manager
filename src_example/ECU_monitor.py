@@ -241,7 +241,7 @@ def main():
         # 配置CAN FD总线
         bus = can.Bus(
             interface="kvaser",
-            channel=1,
+            channel=3,
             bitrate=500000,
             fd=True,
             data_bitrate=2000000

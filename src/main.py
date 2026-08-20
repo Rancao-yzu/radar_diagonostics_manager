@@ -16,12 +16,15 @@ sys.path.insert(0, os.path.join(_BASE_DIR, 'lib'))
 
 from ui.gui_main import RadarDiagnosticsGUI
 from can_config import check_can_interfaces
-from calibration import CalibrationManager, OAResultReceiver
+from calibration import CalibrationManager, OAResultReceiver, _load_can_ids
+from calibration.oa import _OA_CAN_IDS
 from sync import TimeSyncManager
-from dtc import DTCManager
-from ota.version_query import query_version, DID_SOFTWARE, DID_HARDWARE
+from sync.time_sync import _TSYNC_CAN_IDS
+from dtc import DTCManager, load_dtc_config
+from ota.version_query import query_version, DID_SOFTWARE, DID_HARDWARE, VERSION_CAN_IDS
 import can
 from bus_recorder import BusRecorder
+from bus_router import BusRouter
 
 
 class Application:
@@ -36,10 +39,8 @@ class Application:
         self._sync_timer_id = None
         self._dtc_mgr = None
         self._dtc_refresh_id = None
-        # OA 双通道：主通道和标定专用第二通道
+        # OA 结果接收器（经路由总线统一接收四轮）
         self._oa_mgr = None
-        self._oa_bus2 = None
-        self._oa_mgr2 = None
 
         self._bind_events()
 
@@ -77,9 +78,6 @@ class Application:
 
         # OA 结果接收按钮
         self.gui.btn_oa_start._command = self._on_oa_start
-        # OA 第二通道连接/断开按钮
-        self.gui.btn_oa_connect2._command = self._on_oa_connect2
-        self.gui.btn_oa_disconnect2._command = self._on_oa_disconnect2
 
         # 版本查询按钮
         self.gui.btn_ver_fl._command = lambda: self._on_query_version('FL')
@@ -164,35 +162,84 @@ class Application:
             return
         mgr.clear_params(radar_index)
 
+    def _collect_rear_ids(self):
+        """聚合所有后角(RL/RR)相关 CAN ID，供 BusRouter 分发到通道2"""
+        rear_ids = set()
+        # 时间同步：RL/RR
+        rear_ids.add(_TSYNC_CAN_IDS['RL'])
+        rear_ids.add(_TSYNC_CAN_IDS['RR'])
+        # OA 结果：RL/RR
+        for can_id, node in _OA_CAN_IDS.items():
+            if node in ('RL', 'RR'):
+                rear_ids.add(can_id)
+        # 版本查询：RL/RR 请求与响应
+        for tag in ('RL', 'RR'):
+            ids = VERSION_CAN_IDS.get(tag, {})
+            for k in ('req', 'resp'):
+                if k in ids:
+                    rear_ids.add(ids[k])
+        # 标定：left_rear/right_rear 的静态与参数收发 ID
+        cal_ids = _load_can_ids()
+        for k, v in cal_ids.items():
+            if 'left_rear' in k or 'right_rear' in k:
+                rear_ids.add(v)
+        # DTC：rl/rr 的 group1/group2
+        try:
+            dtc_can_ids = load_dtc_config()['can_ids']
+            for k, v in dtc_can_ids.items():
+                if k.startswith('rl_') or k.startswith('rr_'):
+                    rear_ids.add(v)
+        except Exception as e:
+            self.gui.log(f"[WARN] 加载 DTC 后角 ID 失败: {e}", "ERROR")
+        return rear_ids
+
     def _on_connect(self):
-        """连接CAN 通道 按钮的实例"""
-        channel, bitrate, data_bitrate = self.gui.get_channel_info()
-        if not channel or not bitrate or not data_bitrate:
-            self.gui.log("[WARN] 请先选择 CAN 通道、波特率和数据波特率", "ERROR")
+        """连接 CAN 通道：支持三种场景——仅前角、仅后角、全部"""
+        front_ch = self.gui.get_channel_number()
+        rear_ch = self.gui.get_rear_channel_number()
+        _, bitrate, data_bitrate = self.gui.get_channel_info()
+        if not bitrate or not data_bitrate:
+            self.gui.log("[WARN] 请先选择波特率和数据波特率", "ERROR")
             return
-        
+        if not front_ch and not rear_ch:
+            self.gui.log("[WARN] 请至少选择一个通道（前角或后角）", "ERROR")
+            return
+
         if self._bus is not None:
             self._bus.shutdown()
             self._bus = None
             self.gui.log("[INFO] CAN 总线已断开", "INFO")
-        
-        # 不启用硬件过滤：kvaser canlib 在 Linux 下不支持接受过滤器
-        # 全部 CAN 消息接收后由各功能模块按 ID 自行筛选
+
+        # 不启用硬件过滤：全部 CAN 消息接收后由各功能模块按 ID 自行筛选
         filters = [{"can_id": 0, "can_mask": 0, "extended": False}]
-        
-        # 连接 CAN 总线，整个项目的唯一实例!!!!
-        self._bus = can.interface.Bus(
-            interface="kvaser",
-            channel=self.gui.get_channel_number(),
-            bitrate=int(bitrate),
-            data_bitrate=int(data_bitrate),
-            fd=True,
-            can_filters=filters,
-        )
+
+        front_bus = None
+        rear_bus = None
+        try:
+            if front_ch:
+                front_bus = can.interface.Bus(
+                    interface="kvaser", channel=int(front_ch),
+                    bitrate=int(bitrate), data_bitrate=int(data_bitrate),
+                    fd=True, can_filters=filters,
+                )
+            if rear_ch:
+                rear_bus = can.interface.Bus(
+                    interface="kvaser", channel=int(rear_ch),
+                    bitrate=int(bitrate), data_bitrate=int(data_bitrate),
+                    fd=True, can_filters=filters,
+                )
+        except Exception as e:
+            self.gui.log(f"[ERROR] CAN 总线连接失败: {e}", "ERROR")
+            return
+
+        # 路由：双通道按 ID 分发，单通道时全部走已连的那条
+        rear_ids = self._collect_rear_ids()
+        router = BusRouter(front_bus, rear_bus, rear_ids)
         # BusRecorder 透明代理，recv 后自动写
         asc_path = os.path.join('OUT', datetime.now().strftime('%Y%m%d%H%M%S') + '.asc')
         os.makedirs('OUT', exist_ok=True)
-        self._bus = BusRecorder(self._bus, asc_path)
+        self._bus = BusRecorder(router, asc_path)
+
         # 重置各种管理器和实例状态
         self._cal_mgr = None
         self._sync_mgr = None
@@ -203,13 +250,22 @@ class Application:
         self._oa_mgr = None
         self.gui.time_sync_var.set(False)
         self.gui.set_connection_status(True)
-        self.gui.log(f"[OK] 已连接 — Channel: {channel}, Bitrate: {bitrate}, Data Bitrate: {data_bitrate}", "OK")
+
+        # 连接结果日志（三种场景）
+        if front_ch and rear_ch:
+            self.gui.log(f"[OK] 已连接 — 前角通道: {front_ch}, 后角通道: {rear_ch}, "
+                        f"Bitrate: {bitrate}, Data Bitrate: {data_bitrate}", "OK")
+        elif front_ch:
+            self.gui.log(f"[OK] 已连接 — 仅前角通道: {front_ch}, "
+                        f"Bitrate: {bitrate}, Data Bitrate: {data_bitrate}", "OK")
+        else:
+            self.gui.log(f"[OK] 已连接 — 仅后角通道: {rear_ch}, "
+                        f"Bitrate: {bitrate}, Data Bitrate: {data_bitrate}", "OK")
 
     def _on_close(self):
         self._stop_time_sync()
         self._stop_dtc()
         self._stop_oa()
-        self._on_oa_disconnect2()
         self.gui.download_log()  # 关闭前自动保存日志
         if self._bus is not None:
             try:
@@ -220,77 +276,27 @@ class Application:
         self.root.destroy()
 
     def _on_oa_start(self):
-        """启动 OA 结果接收器（支持双通道）"""
+        """启动 OA 结果接收器（经路由总线统一接收四轮）"""
         if self._bus is None:
             self.gui.log('[OA WARN] 请先连接 CAN 总线', 'ERROR')
             return
-        # 主通道 OA 接收器
         if self._oa_mgr is None:
             self._oa_mgr = OAResultReceiver(self._bus, log_callback=self.gui.log,
                                             data_callback=self._on_oa_data)
         self._oa_mgr.start()
-        # 第二通道 OA 接收器（OA 标定专用）
-        if self._oa_bus2 is not None:
-            if self._oa_mgr2 is None:
-                self._oa_mgr2 = OAResultReceiver(self._oa_bus2, log_callback=self.gui.log,
-                                                 data_callback=self._on_oa_data)
-            self._oa_mgr2.start()
         self.gui.oa_set_buttons_state(True)
         # 3 秒后自动停止
         threading.Timer(3.0, self._stop_oa).start()
-
-    def _on_oa_connect2(self):
-        """连接 OA 第二通道"""
-        channel = self.gui.oa_get_channel2_number()
-        if not channel:
-            self.gui.log('[OA WARN] 请先选择第二通道', 'ERROR')
-            return
-        # 断开旧连接
-        self._on_oa_disconnect2()
-        # 从主通道配置获取 bitrate 设置
-        _, bitrate, data_bitrate = self.gui.get_channel_info()
-        if not bitrate or not data_bitrate:
-            self.gui.log('[OA WARN] 请先在 CAN 配置中设置波特率', 'ERROR')
-            return
-        # 与主通道一致，不启用硬件过滤，全部接收
-        oa_filters = [{"can_id": 0, "can_mask": 0, "extended": False}]
-        try:
-            self._oa_bus2 = can.interface.Bus(
-                interface="kvaser",
-                channel=int(channel),
-                bitrate=int(bitrate),
-                data_bitrate=int(data_bitrate),
-                fd=True,
-                can_filters=oa_filters,
-            )
-        except Exception as e:
-            self.gui.log(f'[OA ERROR] 第二通道连接失败: {e}', 'ERROR')
-            self._oa_bus2 = None
-            return
-        self.gui.oa_set_chan2_state(True)
-        self.gui.log(f'[OA] 第二通道已连接 — Channel: {channel}', 'OK')
-
-    def _on_oa_disconnect2(self):
-        """断开 OA 第二通道"""
-        if self._oa_bus2 is not None:
-            self._oa_bus2.shutdown()
-            self._oa_bus2 = None
-            self.gui.log('[OA] 第二通道已断开', 'INFO')
-
-        self.gui.oa_set_chan2_state(False)
 
     def _on_oa_data(self, node, data):
         """OA 数据回调（接收线程中调用，通过 idle 切回主线程更新表格）"""
         self.gui.root.after_idle(lambda: self.gui.oa_update_table(node, data))
 
     def _stop_oa(self):
-        """停止 OA 结果接收器（停所有通道）"""
+        """停止 OA 结果接收器"""
         if self._oa_mgr is not None:
             self._oa_mgr.stop()
             self._oa_mgr = None
-        if self._oa_mgr2 is not None:
-            self._oa_mgr2.stop()
-            self._oa_mgr2 = None
         self.gui.oa_set_buttons_state(False)
 
     def _on_dtc_start(self):
