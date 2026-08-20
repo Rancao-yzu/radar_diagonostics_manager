@@ -36,6 +36,26 @@ BS_:
 BU_: DC RL RR FL FR
 
 
+BO_ 1900 ResetCmd_RR: 8 Vector__XXX
+ SG_ ResetCmd_Subid_RR : 23|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ ResetCmd_Sid_RR : 15|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ ResetCmd_padding_RR : 31|40@0+ (1,0) [0|1099511627775] "" Vector__XXX
+ SG_ ResetCmd_length_RR : 7|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 1836 ResetCmd_RL: 8 Vector__XXX
+ SG_ ResetCmd_Subid_RL : 23|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ ResetCmd_Sid_RL : 15|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ ResetCmd_padding_RL : 31|40@0+ (1,0) [0|1099511627775] "" Vector__XXX
+ SG_ ResetCmd_length_RL : 7|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 1903 ReadCmd_RR: 8 Vector__XXX
+ SG_ ReadCmd_Subid_RR : 23|16@0+ (1,0) [0|65535] "" Vector__XXX
+ SG_ ReadCmd_Sid_RR : 7|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 1839 ReadCmd_RL: 8 Vector__XXX
+ SG_ ReadCmd_Subid_RL : 23|16@0+ (1,0) [0|65535] "" Vector__XXX
+ SG_ ReadCmd_Sid_RL : 7|8@0+ (1,0) [0|255] "" Vector__XXX
+
 BO_ 1828 Pointcloud_output_RR: 8 Vector__XXX
  SG_ Pointcloud_output_enable_RR : 7|8@0+ (1,0) [0|255] ""  RR
 
@@ -216,6 +236,10 @@ BA_DEF_DEF_  "CANoeStartDelay" 0;
 BA_DEF_DEF_  "VFrameFormat" "StandardCAN_FD";
 BA_ "BusType" "CAN FD";
 BA_ "DBName" "VCANFD";
+BA_ "VFrameFormat" BO_ 1900 14;
+BA_ "VFrameFormat" BO_ 1836 14;
+BA_ "VFrameFormat" BO_ 1903 14;
+BA_ "VFrameFormat" BO_ 1839 14;
 BA_ "VFrameFormat" BO_ 1828 14;
 BA_ "VFrameFormat" BO_ 1827 14;
 BA_ "VFrameFormat" BO_ 1826 14;
@@ -224,44 +248,44 @@ BA_ "VFrameFormat" BO_ 1935 14;
 BA_ "VFrameFormat" BO_ 1871 14;
 BA_ "VFrameFormat" BO_ 1932 14;
 BA_ "VFrameFormat" BO_ 1868 14;
-BA_ "GenMsgCycleTime" BO_ 16 10;
 BA_ "GenMsgSendType" BO_ 16 0;
+BA_ "GenMsgCycleTime" BO_ 16 10;
 BA_ "VFrameFormat" BO_ 16 14;
-BA_ "GenMsgSendType" BO_ 1633 0;
 BA_ "GenMsgCycleTime" BO_ 1633 10000;
+BA_ "GenMsgSendType" BO_ 1633 0;
 BA_ "VFrameFormat" BO_ 1633 14;
-BA_ "GenMsgSendType" BO_ 1121 0;
 BA_ "GenMsgCycleTime" BO_ 1121 10000;
+BA_ "GenMsgSendType" BO_ 1121 0;
 BA_ "VFrameFormat" BO_ 1121 14;
-BA_ "GenMsgSendType" BO_ 609 0;
 BA_ "GenMsgCycleTime" BO_ 609 10000;
+BA_ "GenMsgSendType" BO_ 609 0;
 BA_ "VFrameFormat" BO_ 609 14;
-BA_ "GenMsgSendType" BO_ 97 0;
 BA_ "GenMsgCycleTime" BO_ 97 10000;
+BA_ "GenMsgSendType" BO_ 97 0;
 BA_ "VFrameFormat" BO_ 97 14;
-BA_ "GenMsgSendType" BO_ 1632 0;
 BA_ "GenMsgCycleTime" BO_ 1632 10000;
+BA_ "GenMsgSendType" BO_ 1632 0;
 BA_ "VFrameFormat" BO_ 1632 14;
-BA_ "GenMsgSendType" BO_ 1120 0;
 BA_ "GenMsgCycleTime" BO_ 1120 10000;
+BA_ "GenMsgSendType" BO_ 1120 0;
 BA_ "VFrameFormat" BO_ 1120 14;
-BA_ "GenMsgSendType" BO_ 608 0;
 BA_ "GenMsgCycleTime" BO_ 608 10000;
+BA_ "GenMsgSendType" BO_ 608 0;
 BA_ "VFrameFormat" BO_ 608 14;
-BA_ "GenMsgSendType" BO_ 96 0;
 BA_ "GenMsgCycleTime" BO_ 96 10000;
+BA_ "GenMsgSendType" BO_ 96 0;
 BA_ "VFrameFormat" BO_ 96 14;
-BA_ "GenMsgSendType" BO_ 67 0;
 BA_ "GenMsgCycleTime" BO_ 67 396;
+BA_ "GenMsgSendType" BO_ 67 0;
 BA_ "VFrameFormat" BO_ 67 14;
-BA_ "GenMsgSendType" BO_ 66 0;
 BA_ "GenMsgCycleTime" BO_ 66 396;
+BA_ "GenMsgSendType" BO_ 66 0;
 BA_ "VFrameFormat" BO_ 66 14;
-BA_ "GenMsgSendType" BO_ 65 0;
 BA_ "GenMsgCycleTime" BO_ 65 396;
+BA_ "GenMsgSendType" BO_ 65 0;
 BA_ "VFrameFormat" BO_ 65 14;
-BA_ "GenMsgSendType" BO_ 64 0;
 BA_ "GenMsgCycleTime" BO_ 64 396;
+BA_ "GenMsgSendType" BO_ 64 0;
 BA_ "VFrameFormat" BO_ 64 14;
 BA_ "GenSigStartValue" SG_ 16 HostYawRate 2048;
 BA_ "GenSigStartValue" SG_ 16 HostVel 2000;

@@ -7,6 +7,8 @@ import can
 VERSION_CAN_IDS = {
     'FL': {'req': 0x74F, 'resp': 0x74E},
     'FR': {'req': 0x78F, 'resp': 0x78E},
+    'RL': {'req': 0x72F, 'resp': 0x72E},
+    'RR': {'req': 0x76F, 'resp': 0x76E},
 }
 
 # 版本类型 DID
@@ -22,7 +24,7 @@ def query_version(bus, radar, did, log_callback=None):
 
     Args:
         bus: CAN 总线实例
-        radar: 'FL' 或 'FR'
+        radar: 'FL'/'FR'/'RL'/'RR'（前左/前右/后左/后右）
         did: DID_SOFTWARE (0xFF00) 或 DID_HARDWARE (0xFF01)
         log_callback: 日志回调函数
 

@@ -12,27 +12,31 @@ class RadarECUSimulator:
         self.running = Event()
         self.running.set()
         
-        # 雷达CAN ID配置（与config_c.ini保持一致）
+        # 雷达CAN ID配置（与config_c.ini及version_query.py保持一致）
         self.radar_configs = {
-            'left_front': {
+            'FL': {
                 'name': '左前',
                 'static_send': 0x61, 'static_recv': 0x71,
                 'param_send': 0x60, 'param_recv': 0x70,
+                'ver_req': 0x74F, 'ver_resp': 0x74E,
             },
-            'right_front': {
+            'FR': {
                 'name': '右前',
                 'static_send': 0x261, 'static_recv': 0x271,
                 'param_send': 0x260, 'param_recv': 0x270,
+                'ver_req': 0x78F, 'ver_resp': 0x78E,
             },
-            'left_rear': {
+            'RL': {
                 'name': '左后',
                 'static_send': 0x461, 'static_recv': 0x471,
                 'param_send': 0x460, 'param_recv': 0x470,
+                'ver_req': 0x72F, 'ver_resp': 0x72E,
             },
-            'right_rear': {
+            'RR': {
                 'name': '右后',
                 'static_send': 0x661, 'static_recv': 0x671,
                 'param_send': 0x660, 'param_recv': 0x670,
+                'ver_req': 0x76F, 'ver_resp': 0x76E,
             },
         }
 
@@ -43,8 +47,14 @@ class RadarECUSimulator:
                 'error_code': 0x08        # 0x08：执行成功
             } for key in self.radar_configs
         }
+
+        # 版本号配置（模拟值，ASCII字符串）
+        self.version_strings = {
+            key: {'software': '001000505DSW1.11', 'hardware': '001000505DHW1.11'}
+            for key in self.radar_configs
+        }
         
-    def build_calibration_response(self, radar_side='left_front'):
+    def build_calibration_response(self, radar_side='FL'):
         """
         构建静态标定响应数据
         格式：04 + 标定结果(2字节) + 标定错误码(2字节) = 5字节
@@ -160,7 +170,40 @@ class RadarECUSimulator:
                 self.send_safe(cfg['param_recv'], bytes([0x02, 0x01]))
                 print(f"  [响应] 参数清除成功")
             break
-    
+
+    def handle_version_query(self, msg):
+        """处理版本查询命令（与version_query.py协议一致）
+        请求: 0x22 + DID(2字节大端) + 0x00*5
+        响应: 0x62 + DID(2字节) + 有效长度 + ASCII版本字符串
+        """
+        DID_SOFTWARE = 0xFF00  # 软件版本
+        DID_HARDWARE = 0xFF01  # 硬件版本
+
+        for key, cfg in self.radar_configs.items():
+            if msg.arbitration_id != cfg['ver_req']:
+                continue
+
+            if len(msg.data) < 3 or msg.data[0] != 0x22:
+                print(f"  [警告] {cfg['name']}版本查询请求格式异常: {msg.data.hex()}")
+                break
+
+            did = (msg.data[1] << 8) | msg.data[2]
+            if did == DID_SOFTWARE:
+                ver_str = self.version_strings[key]['software']
+            elif did == DID_HARDWARE:
+                ver_str = self.version_strings[key]['hardware']
+            else:
+                print(f"  [警告] {cfg['name']}版本查询未知DID=0x{did:04X}")
+                break
+
+            ascii_bytes = ver_str.encode('ascii')
+            valid_len = len(ascii_bytes)
+            # 响应: 0x62 + DID(2字节) + 有效长度 + ASCII数据
+            resp = bytes([0x62, (did >> 8) & 0xFF, did & 0xFF, valid_len]) + ascii_bytes
+            self.send_safe(cfg['ver_resp'], resp)
+            print(f"  [响应] {cfg['name']}版本查询 DID=0x{did:04X} 版本={ver_str}")
+            break
+
     def run(self):
         """主循环，监听CAN消息"""
         print("=" * 60)
@@ -174,13 +217,16 @@ class RadarECUSimulator:
                 if msg:
                     print(f"\n[RECV] ID=0x{msg.arbitration_id:X}, Data({len(msg.data)}字节)={msg.data.hex()}")
                     
-                    # 按配置的CAN ID分发：静态标定 / 参数标定
+                    # 按配置的CAN ID分发：静态标定 / 参数标定 / 版本查询
                     static_send_ids = [cfg['static_send'] for cfg in self.radar_configs.values()]
                     param_send_ids = [cfg['param_send'] for cfg in self.radar_configs.values()]
+                    ver_req_ids = [cfg['ver_req'] for cfg in self.radar_configs.values()]
                     if msg.arbitration_id in static_send_ids:
                         self.handle_static_calibration(msg)
                     elif msg.arbitration_id in param_send_ids:
                         self.handle_extrinsic_calibration(msg)
+                    elif msg.arbitration_id in ver_req_ids:
+                        self.handle_version_query(msg)
                         
             except Exception as e:
                 print(f"接收消息时出错: {e}")

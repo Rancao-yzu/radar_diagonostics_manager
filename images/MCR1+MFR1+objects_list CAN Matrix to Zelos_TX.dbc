@@ -36,6 +36,32 @@ BS_:
 BU_: DC RL RR FL FR
 
 
+BO_ 1901 ResetCmd_RR: 8 Vector__XXX
+ SG_ ResetCmd_Subid_RR : 23|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ ResetCmd_Sid_RR : 15|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ ResetCmd_padding_RR : 31|40@0+ (1,0) [0|1099511627775] "" Vector__XXX
+ SG_ ResetCmd_length_RR : 7|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 1837 ResetCmd_RL: 8 Vector__XXX
+ SG_ ResetCmd_Subid_RL : 23|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ ResetCmd_Sid_RL : 15|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ ResetCmd_padding_RL : 31|40@0+ (1,0) [0|1099511627775] "" Vector__XXX
+ SG_ ResetCmd_length_RL : 7|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 1902 ReadCmd_RR: 64 Vector__XXX
+ SG_ ReadCmd_version2_RR : 103|64@0+ (1,0) [0|1.84467440737096E+019] "" Vector__XXX
+ SG_ ReadCmd_version1_RR : 39|64@0+ (1,0) [0|1.84467440737096E+019] "" Vector__XXX
+ SG_ ReadCmd_Subid_RR : 15|16@0+ (1,0) [0|65535] "" Vector__XXX
+ SG_ ReadCmd_Sid_RR : 7|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ ReadCmd_length_RR : 31|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 1838 ReadCmd_RL: 64 Vector__XXX
+ SG_ ReadCmd_version2_RL : 103|64@0+ (1,0) [0|1.84467440737096E+019] "" Vector__XXX
+ SG_ ReadCmd_version1_RL : 39|64@0+ (1,0) [0|1.84467440737096E+019] "" Vector__XXX
+ SG_ ReadCmd_Subid_RL : 15|16@0+ (1,0) [0|65535] "" Vector__XXX
+ SG_ ReadCmd_Sid_RL : 7|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ ReadCmd_length_RL : 31|8@0+ (1,0) [0|255] "" Vector__XXX
+
 BO_ 1934 ReadCmd_FR: 64 FR
  SG_ ReadCmd_Subid_FR : 15|16@0+ (1,0) [0|65535] "" Vector__XXX
  SG_ ReadCmd_Sid_FR : 7|8@0+ (1,0) [0|255] "" Vector__XXX
@@ -7737,6 +7763,10 @@ BA_DEF_DEF_  "VFrameFormat" "StandardCAN_FD";
 BA_DEF_DEF_  "SystemSignalLongSymbol" "";
 BA_ "BusType" "CAN FD";
 BA_ "DBName" "VCANFD";
+BA_ "VFrameFormat" BO_ 1901 14;
+BA_ "VFrameFormat" BO_ 1837 14;
+BA_ "VFrameFormat" BO_ 1902 14;
+BA_ "VFrameFormat" BO_ 1838 14;
 BA_ "VFrameFormat" BO_ 1934 14;
 BA_ "VFrameFormat" BO_ 1870 14;
 BA_ "VFrameFormat" BO_ 1933 14;

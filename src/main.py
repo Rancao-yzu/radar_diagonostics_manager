@@ -84,6 +84,8 @@ class Application:
         # 版本查询按钮
         self.gui.btn_ver_fl._command = lambda: self._on_query_version('FL')
         self.gui.btn_ver_fr._command = lambda: self._on_query_version('FR')
+        self.gui.btn_ver_rl._command = lambda: self._on_query_version('RL')
+        self.gui.btn_ver_rr._command = lambda: self._on_query_version('RR')
 
         # 版本说明弹窗按钮
         self.gui.btn_version._command = self.gui._show_version_info
@@ -331,23 +333,25 @@ class Application:
             hw = query_version(self._bus, radar, DID_HARDWARE, log_callback=self.gui.log)
             self.root.after_idle(lambda: self._update_version_ui(radar, sw, hw))
 
-        self.gui.btn_ver_fl.configure(state=tk.DISABLED)
-        self.gui.btn_ver_fr.configure(state=tk.DISABLED)
+        ver_btns = [self.gui.btn_ver_fl, self.gui.btn_ver_fr,
+                    self.gui.btn_ver_rl, self.gui.btn_ver_rr]
+        for btn in ver_btns:
+            btn.configure(state=tk.DISABLED)
         threading.Thread(target=_do_query, daemon=True).start()
         # 2.5s 后恢复按钮
-        self.root.after(2500, lambda: self.gui.btn_ver_fl.configure(state=tk.NORMAL))
-        self.root.after(2500, lambda: self.gui.btn_ver_fr.configure(state=tk.NORMAL))
+        for btn in ver_btns:
+            self.root.after(2500, lambda b=btn: b.configure(state=tk.NORMAL))
 
     def _update_version_ui(self, radar, sw, hw):
         """更新版本查询 UI 显示"""
         sw_str = f"软件版本: {sw}" if sw else "软件版本: 查询失败"
         hw_str = f"硬件版本: {hw}" if hw else "硬件版本: 查询失败"
-        if radar == 'FL':
-            self.gui.ver_fl_sw_var.set(sw_str)
-            self.gui.ver_fl_hw_var.set(hw_str)
-        else:
-            self.gui.ver_fr_sw_var.set(sw_str)
-            self.gui.ver_fr_hw_var.set(hw_str)
+        sw_var = getattr(self.gui, f'ver_{radar.lower()}_sw_var', None)
+        hw_var = getattr(self.gui, f'ver_{radar.lower()}_hw_var', None)
+        if sw_var is not None:
+            sw_var.set(sw_str)
+        if hw_var is not None:
+            hw_var.set(hw_str)
 
     def _refresh_channels(self):
         """扫描可用 CAN 通道，更新下拉列表，完成后恢复鼠标样式"""

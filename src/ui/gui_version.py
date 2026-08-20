@@ -59,13 +59,6 @@ def show_version_dialog(parent, config_path=None):
     win.wait_visibility()   # 等待窗口被映射后再 grab，避免 X11 下 "grab failed: window not viewable"
     win.grab_set()
 
-    # ---- 顶部标题栏 ----
-    header = tk.Frame(win, bg=BG_CARD, height=40)
-    header.pack(fill=tk.X)
-    header.pack_propagate(False)
-    tk.Label(header, text="版本与更新说明", font=('Microsoft YaHei', 12, 'bold'),
-             fg='white', bg=ORANGE_PRIMARY).pack(side=tk.LEFT, padx=8, pady=8)
-
     # ---- 内容区 ----
     text = tk.Text(win, wrap=tk.WORD, font=('Microsoft YaHei', 10),
                   fg=TEXT_DARK, bg=BG_CARD, padx=20, pady=14,
