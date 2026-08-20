@@ -76,5 +76,15 @@ class BusRouter:
                 pass
 
     def __getattr__(self, name):
-        # 兼容对总线其它属性的访问，默认委托前角总线
-        return getattr(self._front, name)
+        # 兼容对总线其它属性的访问：优先委托前角，前角没有则委托后角
+        if self._front is not None:
+            try:
+                return getattr(self._front, name)
+            except AttributeError:
+                pass  # 前角没有这个属性，继续查后角
+        
+        if self._rear is not None:
+            return getattr(self._rear, name)
+        
+        # 两条总线都不存在或都没有该属性
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
