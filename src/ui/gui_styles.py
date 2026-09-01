@@ -59,8 +59,8 @@ def setup_styles():
     style.configure('OTA.Horizontal.TProgressbar',
                     troughcolor=ORANGE_LIGHT,
                     background=ORANGE_PRIMARY,
-                    thickness=18,
-                    borderwidth=0,
+                    thickness=25,
+                    borderwidth=2,
                     lightcolor=ORANGE_PRIMARY,
                     darkcolor=ORANGE_PRIMARY)
 

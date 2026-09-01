@@ -49,4 +49,6 @@ WF_Radar_Diagonostics_manager/
   1. 在 `_on_connect` 的 `filters` 中追加对应的 CAN ID
   2. 创建 Manager 时传入同一个 `self._bus` 即可
 
+> **例外**：OTA 升级使用专用总线（刷写需独占总线），在 `_ota_worker` 中创建并同样用 `BusRecorder` 包装，流量记录到独立的 `OUT/*_OTA.asc`。
+
 

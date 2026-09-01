@@ -4,7 +4,7 @@
 import os
 import sys
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog
 from datetime import datetime
 from PIL import Image, ImageTk
 
@@ -72,7 +72,7 @@ class RadarDiagnosticsGUI:
         header = tk.Frame(self.sidebar, bg=BG_CARD)
         header.pack(fill=tk.X, pady=(4, 12))
 
-        tk.Label(header, text=" 雷达诊断管理 V1.5.4", font=('Microsoft YaHei', 12, 'bold italic'),
+        tk.Label(header, text=" 雷达诊断管理 V2.0.0", font=('Microsoft YaHei', 12, 'bold italic'),
                         fg=ORANGE_ACCENT, bg=BG_CARD).pack(anchor=tk.W)
 
         tk.Frame(self.sidebar, bg=ORANGE_LIGHT, height=1).pack(fill=tk.X, pady=(0, 12))
@@ -174,7 +174,8 @@ class RadarDiagnosticsGUI:
         self.ota_file_entry.pack(side=tk.LEFT, padx=(0, 8))
 
         self.btn_ota_browse = _FlatButton(file_inner, text="浏览", bg=ORANGE_PRIMARY,
-                                          hover=ORANGE_ACCENT, width=60, height=28)
+                                          hover=ORANGE_ACCENT, width=60, height=28,
+                                          command=self._on_ota_browse)
         self.btn_ota_browse.pack(side=tk.LEFT)
 
         # ---- 操作按钮 ----
@@ -186,7 +187,29 @@ class RadarDiagnosticsGUI:
 
         self.btn_ota_start = _FlatButton(action_inner, text="开始升级", bg=ORANGE_PRIMARY,
                                          hover=ORANGE_ACCENT, width=100, height=32)
-        self.btn_ota_start.pack(side=tk.LEFT, padx=(0, 10))
+        self.btn_ota_start.pack(side=tk.LEFT, padx=(0, 0))
+
+        # 升级结果提示：成功显示绿色，失败显示红色（由 ota_set_result 切换颜色）
+        self.ota_status_var = tk.StringVar(value="OTA")
+        self.ota_status_label = tk.Label(action_inner, textvariable=self.ota_status_var,
+                                         font=('Microsoft YaHei', 12, 'bold'),
+                                         fg=ORANGE_ACCENT, bg=BG_CARD)
+        self.ota_status_label.pack(side=tk.LEFT, padx=(10, 15))
+
+        # ---- 升级进度：进度条 + 右侧百分比文本，同一行扁平嵌入操作区下方 ----
+        prog_row = tk.Frame(action_inner, bg=BG_CARD)
+        prog_row.pack(fill=tk.X, pady=(10, 0))
+
+        self.ota_progress_var = tk.DoubleVar(value=0.0)
+        self.ota_progress_bar = ttk.Progressbar(prog_row, orient=tk.HORIZONTAL,
+                                                style='OTA.Horizontal.TProgressbar',
+                                                variable=self.ota_progress_var,
+                                                maximum=100)
+        self.ota_progress_bar.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
+
+        self.ota_progress_text_var = tk.StringVar(value="就绪")
+        tk.Label(prog_row, textvariable=self.ota_progress_text_var,
+                 font=('Microsoft YaHei', 9), fg=TEXT_DARK, bg=BG_CARD).pack(side=tk.LEFT)
 
         # ---- 版本查询 ----
         section_ver = ttk.LabelFrame(inner, text="版本查询", style='Card.TLabelframe')
@@ -223,6 +246,31 @@ class RadarDiagnosticsGUI:
         _build_ver_cell(ver_grid, 'FR', 0, 1)
         _build_ver_cell(ver_grid, 'RL', 1, 0)
         _build_ver_cell(ver_grid, 'RR', 1, 1)
+
+    def _on_ota_browse(self):
+        """浏览并选择固件 hex 文件"""
+        path = filedialog.askopenfilename(
+            title="选择固件文件",
+            filetypes=[("HEX 文件", "*.hex"), ("所有文件", "*.*")])
+        if path:
+            self.ota_file_var.set(path)
+
+    def ota_set_running(self, running):
+        """设置 OTA 升级期间按钮状态（防止升级中重复启动/换文件）"""
+        self.btn_ota_start.set_enabled(not running)
+        self.btn_ota_browse.set_enabled(not running)
+
+    def ota_update_progress(self, percent, text):
+        """更新 OTA 进度条与进度文本（线程安全，OTA 子线程可直接调用）"""
+        def _write():
+            self.ota_progress_var.set(percent)
+            self.ota_progress_text_var.set(text)
+        self.root.after_idle(_write)
+
+    def ota_set_result(self, success, message):
+        """显示 OTA 升级结果：成功绿色提示，失败红色提示（仅主线程调用）"""
+        self.ota_status_var.set(message)
+        self.ota_status_label.configure(fg=LOG_COLORS["OK"] if success else LOG_COLORS["ERROR"])
 
     def _build_dtc_panel(self):
         """构建 DTC 读取/清除面板"""

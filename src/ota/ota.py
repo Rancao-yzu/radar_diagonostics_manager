@@ -10,10 +10,8 @@ import can
 import isotp
 from uds import UdsMessage, IsoServices, Uds
 import time
-import threading
 import zlib
 from intelhex import IntelHex
-import ctypes
 
 
 # ISO-TP 参数配置
@@ -43,81 +41,43 @@ FORCEJUMP_DATA = [0x02, 0x10, 0x60,
                   0x46, 0x4F, 0x52, 0x43, 0x45, 0x4A, 0x55, 0x4D, 0x50,  # "FORCEJUMP"
                   0xA5, 0xB6, 0xC7, 0xD8]
 
-# hex文件路径 (基于项目根目录)
-HEX_FILE_PATH = os.path.join(_BASE_DIR, "90", "1M_CUSTOMER_APP烧录_fffash", "productionsw.hex")
 
-# 安全访问 DLL 路径 (基于项目根目录)
-SECURITY_DLL_PATH = os.path.join(_BASE_DIR, "90", "1M_CUSTOMER_APP烧录_fffash",
-                                  "security_dll", "SeednKey.dll")
+# 日志输出函数：默认 print，run_ota 启动时替换为 GUI 日志回调，结束后还原
+_log_fn = print
+
+
+def _log(msg, tag="INFO"):
+    _log_fn(msg,tag)
 
 
 def uds_send(canUds, service, params, confirm=None, timeout=2.0):
     """发送 UDS 请求并检查正响应"""
     msg = UdsMessage()
     msg.create(service, params)
+    _log(f"  [TX] {[format(b, '02X') for b in msg.frame]}", "SEND")
     res, resp = canUds.send(msg, timeout=timeout, confirm=confirm)
+    # 调试: 打印原始响应帧; resp 为数字时是库内部错误码(2=超时 3=响应不匹配 4=异常)
+    if resp is not None and hasattr(resp, 'frame') and len(resp.frame) > 0:
+        _log(f"  [RX] {[format(b, '02X') for b in resp.frame]}", "RECV")
     if not res:
+        if not (resp is not None and hasattr(resp, 'frame')):
+            _log(f"  [RX] 无响应 (库错误码: {resp})", "ERROR")
         raise Exception(f"UDS 请求失败: service=0x{service:02X}, params={[hex(p) for p in params]}")
     return resp
 
 
 def seed_key_func(dll_path, seed, seed_level):
     """
-    安全访问种子-密钥计算，通过 ctypes 调用 GenerateKeyEx。
-    :param dll_path: DLL路径
+    安全访问种子-密钥计算（Linux 纯 Python 实现，替代 Windows SeednKey.dll）。
+    按 docx/Security.md 对 DLL 行为的拆解：密钥为固定 2000 字节 0x11，与种子内容无关。
+    :param dll_path: 未使用（保留参数以兼容 Uds.sercurityAccess 的调用签名）
     :param seed: ECU返回的种子 (byte list)
     :param seed_level: 安全访问等级
     :return: 计算出的密钥 (byte list)
     """
-    # 将DLL所在目录加入PATH，确保其依赖DLL能被找到
-    path = os.environ.get("PATH", "")
-    dll_dir = os.path.dirname(os.path.abspath(dll_path))
-    if dll_dir not in path:
-        os.environ["PATH"] = dll_dir + os.pathsep + path
-
-    if not os.path.exists(dll_path):
-        raise FileNotFoundError(f"DLL not found at {dll_path}")
-
-    print(f"  Loading DLL: {dll_path}")
-    dll = ctypes.CDLL(dll_path)
-
-    # GenerateKeyEx 签名
-    generateKeyEx = dll.GenerateKeyEx
-    generateKeyEx.restype = ctypes.c_int
-    generateKeyEx.argtypes = [
-        ctypes.POINTER(ctypes.c_ubyte),  # ipSeedArray
-        ctypes.c_uint,                   # iSeedArraySize
-        ctypes.c_uint,                   # iSecurityLevel
-        ctypes.c_char_p,                 # ipVariant
-        ctypes.POINTER(ctypes.c_ubyte),  # iopKeyArray
-        ctypes.c_uint,                   # iMaxKeyArraySize
-        ctypes.POINTER(ctypes.c_uint)    # oActualKeyArraySize
-    ]
-
-    seed_bytes = bytes(seed)
-    seed_array = (ctypes.c_ubyte * len(seed_bytes))(*seed_bytes)
-    variant = b"VARIANT_A"
-    max_key_size = 5000
-    key_array = (ctypes.c_ubyte * max_key_size)()
-    actual_key_size = ctypes.c_uint(0)
-
-    print(f"  Seed level: 0x{seed_level:02X}, Seed: {[format(s, '02x') for s in seed]}")
-
-    result = generateKeyEx(
-        seed_array,
-        len(seed_bytes),
-        seed_level,
-        variant,
-        key_array,
-        max_key_size,
-        ctypes.byref(actual_key_size)
-    )
-    if result != 0:
-        raise Exception(f"GenerateKeyEx failed with error code: {result}")
-
-    key_data = bytes(key_array).rstrip(b'\x00')
-    key_list = list(key_data)
-    print(f"  Key: {[format(k, '02x') for k in key_list]}")
+    _log(f"  Seed level: 0x{seed_level:02X}, Seed({len(seed)}B): {[format(s, '02x') for s in seed[:8]]} ...")
+    key_list = [0x11] * 2000
+    _log(f"  Key: {len(key_list)} bytes of 0x11")
     return key_list
 
 
@@ -135,12 +95,12 @@ def step_sending_security_frame(canBus):
     for _ in range(100):
         canBus.send(force_msg)
         time.sleep(0.05)
-    print("[Sending_SecurityFrame] 安全帧发送完成 (100次)") 
+    _log("[Sending_SecurityFrame] 安全帧发送完成 (100次)") 
 
 
-def step_load_file():
+def step_load_file(hex_path):
     """LoadFile: 加载 hex 文件，返回 (data, address, length, crc)"""
-    ihObj = IntelHex(HEX_FILE_PATH)
+    ihObj = IntelHex(hex_path)
     segments = ihObj.segments()
     start = segments[0][0]
     end = segments[0][1]
@@ -148,8 +108,8 @@ def step_load_file():
     file_length = end - start
     file_crc = zlib.crc32(file_data) & 0xFFFFFFFF
 
-    print(f"[LoadFile] {HEX_FILE_PATH}")
-    print(f"  Address: 0x{start:08X}, Length: 0x{file_length:08X} ({file_length}), CRC32: 0x{file_crc:08X}")
+    _log(f"[LoadFile] {hex_path}")
+    _log(f"  Address: 0x{start:08X}, Length: 0x{file_length:08X} ({file_length}), CRC32: 0x{file_crc:08X}")
     return start, file_data, file_length, file_crc
 
 
@@ -157,27 +117,27 @@ def step1_extended_session(canUds):
     """step1: 扩展会话 10 03 -> 50 03"""
     uds_send(canUds, IsoServices.DiagnosticSessionControl, [0x03],
              confirm=[0x03], timeout=3.0)
-    print("[step1_extendedsession] 扩展会话切换成功")
+    _log("[step1_extendedsession] 扩展会话切换成功")
 
 
 def step2_programming_session(canUds):
     """step2: 编程会话 10 06 -> 50 06"""
     uds_send(canUds, IsoServices.DiagnosticSessionControl, [0x06],
              confirm=[0x06], timeout=3.0)
-    print("[step2_programsession] 编程会话切换成功")
+    _log("[step2_programsession] 编程会话切换成功")
 
 
 def step3_security_access(canUds):
-    """step3: 安全访问, level 0x61"""
+    """step3: 安全访问, level 0x61（密钥由 seed_key_func 纯 Python 计算，无需 DLL）"""
     res, response = canUds.sercurityAccess(
         seedLevel=0x61,
-        dllPath=SECURITY_DLL_PATH,
+        dllPath=None,  # Linux 下无 DLL，仅为兼容接口签名传 None
         seedFunc=seed_key_func,
-        printLog=True
+        printLog=False
     )
     if not res:
         raise Exception("step3_securityseed 安全访问失败")
-    print("[step3_securityseed] 安全访问通过")
+    _log("[step3_securityseed] 安全访问通过")
 
 
 def step5_erase_block(canUds, address, length):
@@ -187,7 +147,7 @@ def step5_erase_block(canUds, address, length):
     params = [0x01, 0xFF, 0x00] + addr_bytes + len_bytes
     uds_send(canUds, IsoServices.RoutineControl, params,
              confirm=[0x01, 0xFF, 0x00, 0x10], timeout=20.0)
-    print(f"[step5_eraseblock_APP] 擦除完成 address=0x{address:08X} length={length}")
+    _log(f"[step5_eraseblock_APP] 擦除完成 address=0x{address:08X} length={length}")
 
 
 def step10_request_download(canUds, address, length):
@@ -197,21 +157,25 @@ def step10_request_download(canUds, address, length):
     params = [0x00, 0x44] + addr_bytes + len_bytes
     uds_send(canUds, IsoServices.RequestDownload, params,
              confirm=[0x20], timeout=5.0)
-    print("[step10_RequestDownload] 请求下载成功")
+    _log("[step10_RequestDownload] 请求下载成功")
 
 
-def step11_transfer_data(canUds, file_data):
-    """step11: 传输数据 TRANSFILE, chunkSize=4093"""
-    canUds.transferFile(fileData=file_data, chunkSize=4093)
+def step11_transfer_data(canUds, file_data, progress_callback=None):
+    """step11: 传输数据 TRANSFILE, chunkSize=4093（transferFile 失败时返回 False 而不抛异常，需检查）"""
+    res, err = canUds.transferFile(fileData=file_data, chunkSize=4093,
+                                   progress_callback=progress_callback)
+    if not res:
+        # err: 1=传输中无响应 2=等待响应超时 3=响应序列号不匹配
+        raise Exception(f"step11_transferdata0 数据传输失败 (错误码: {err})")
     total_blocks = len(file_data) // 4093 + (1 if len(file_data) % 4093 else 0)
-    print(f"[step11_transferdata0] 数据传输完成 共 {total_blocks} 块")
+    _log(f"[step11_transferdata0] 数据传输完成 共 {total_blocks} 块")
 
 
 def step12_transfer_exit(canUds):
     """step12: 传输结束 37 -> 77"""
     uds_send(canUds, IsoServices.RequestTransferExit, [],
              confirm=[], timeout=5.0)
-    print("[step12_RequestTransferExit0] 传输结束")
+    _log("[step12_RequestTransferExit0] 传输结束")
 
 
 def step13_crc_check(canUds, crc):
@@ -220,7 +184,7 @@ def step13_crc_check(canUds, crc):
     params = [0x01, 0x02, 0x12] + crc_bytes
     uds_send(canUds, IsoServices.RoutineControl, params,
              confirm=[0x01, 0x02, 0x12, 0x10, 0x00], timeout=5.0)
-    print(f"[step13_CRC] CRC校验通过 crc=0x{crc:08X}")
+    _log(f"[step13_CRC] CRC校验通过 crc=0x{crc:08X}")
 
 
 def step14_write_cust_flag(canUds):
@@ -228,35 +192,53 @@ def step14_write_cust_flag(canUds):
     uds_send(canUds, IsoServices.WriteDataByIdentifier,
              [0xFC, 0x01, 0x43, 0x55, 0x41, 0x50],  # "CUAP" = Customer App
              confirm=[0xFC, 0x01], timeout=3.2)
-    print("[step14_write_cust_flag] 客户标志写入成功")
+    _log("[step14_write_cust_flag] 客户标志写入成功")
 
 
 def step19_check_dependencies(canUds):
     """step19: 依赖检查 31 01 02 05"""
     uds_send(canUds, IsoServices.RoutineControl, [0x01, 0x02, 0x05],
              confirm=[], timeout=3.1)
-    print("[step19_Check_dependencies] 依赖检查通过")
+    _log("[step19_Check_dependencies] 依赖检查通过")
 
 
 def step20_ecu_reset(canUds):
     """step20: ECU复位到默认会话 10 01"""
     uds_send(canUds, IsoServices.DiagnosticSessionControl, [0x01],
-             confirm=[], timeout=8.0)
-    print("[step20_ecuReset] ECU复位已发送")
+             confirm=[0x7F,0x10,0x78], timeout=8.0)
+    _log("[step20_ecuReset] ECU复位已发送")
 
 
 # ======================== 主流程 ========================
 
-def main():
-    canBus = can.interface.Bus(
-        interface="kvaser",
-        channel="0",
-        bitrate=500000,
-        data_bitrate=2000000,
-        fd=True,
-    )
+def run_ota(canBus, hex_path, progress_callback=None, log_callback=None):
+    """
+    OTA 升级主流程（总线由调用方创建并负责 shutdown 释放）。
+    任一步骤失败抛出 Exception，由调用方捕获提示。
+    :param canBus: CAN 总线实例
+    :param hex_path: 固件 hex 文件路径
+    :param progress_callback: 进度回调 progress_callback(percent, text)，percent 为 0~100
+    :param log_callback: 日志回调 log_callback(message, tag)
+    """
+    global _log_fn
+
+    def _report(percent, text):
+        if progress_callback:
+            progress_callback(percent, text)
+
+    def _transfer_progress(idx, total):
+        # 数据传输阶段占总进度 30% ~ 90%
+        if total > 0:
+            _report(min(30 + int(60 * idx / total), 90), f"传输固件数据 {idx}/{total}")
+
+    # 切换模块内所有 _log 输出到 GUI 日志
+    _log_fn = log_callback or print
+    canTp = None
 
     try:
+        _log(f"[OTA] 开始升级 — File: {hex_path}")
+        _report(2, "发送安全帧...")
+
         # ---- Sending_SecurityFrame: 发送 FORCEJUMP 安全帧 ----
         step_sending_security_frame(canBus)
 
@@ -271,49 +253,65 @@ def main():
         canUds = Uds(canTp)
 
         # ---- LoadFile: 加载 hex 文件 ----
-        start_address, file_data, file_length, file_crc = step_load_file()
+        _report(8, "加载固件文件...")
+        start_address, file_data, file_length, file_crc = step_load_file(hex_path)
 
         # ---- step1: 扩展会话 ----
+        _report(12, "切换扩展会话...")
         step1_extended_session(canUds)
 
         # ---- step2: 编程会话 ----
+        _report(16, "切换编程会话...")
         step2_programming_session(canUds)
 
         # ---- step3: 安全访问 ----
+        _report(20, "安全访问...")
         step3_security_access(canUds)
 
         # ---- step5: 擦除 ----
+        _report(25, "擦除 Flash...")
         step5_erase_block(canUds, start_address, file_length)
 
         # ---- step10: 请求下载 ----
+        _report(30, "请求下载...")
         step10_request_download(canUds, start_address, file_length)
 
         # ---- step11: 传输数据 ----
-        step11_transfer_data(canUds, file_data)
+        _report(30, "传输固件数据...")
+        step11_transfer_data(canUds, file_data, progress_callback=_transfer_progress)
 
         # ---- step12: 传输结束 ----
+        _report(92, "结束传输...")
         step12_transfer_exit(canUds)
 
         # ---- step13: CRC校验 ----
+        _report(95, "CRC 校验...")
         step13_crc_check(canUds, file_crc)
 
         # ---- step14: 写客户标志 ----
+        _report(97, "写客户标志...")
         step14_write_cust_flag(canUds)
 
         # ---- step19: 依赖检查 ----
+        _report(99, "依赖检查...")
         step19_check_dependencies(canUds)
 
         # ---- step20: ECU复位 ----
-        step20_ecu_reset(canUds)
+        _report(100, "ECU 复位...")
+        # 按文档：复位请求发出后 ECU 可能直接重启不再应答，无响应不影响升级结果
+        try:
+            step20_ecu_reset(canUds)
+        except Exception:
+            _log("[OTA] ECU 复位请求已发送", "INFO")
 
-        print("\nOTA 升级完成！")
+        _log("[OTA] 升级完成！", "OK")
 
     finally:
-        canBus.shutdown()
-
-
-if __name__ == "__main__":
-    main()
-
+        # 只停 ISO-TP 内部线程；总线 shutdown 由调用方负责
+        # （必须先停 ISO-TP 再关总线，否则 relay 线程会对已关闭的 handle 读数据报 "Handle is invalid"）
+        if canTp is not None:
+            canTp.stop()
+        # 还原日志输出，避免后续调用指向已失效的 GUI 回调
+        _log_fn = print
 
 

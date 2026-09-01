@@ -5,6 +5,7 @@ import sys
 import os
 import threading
 import tkinter as tk
+from tkinter import messagebox
 
 # 将 lib/ 目录加入搜索路径，确保使用项目内置的 isotp/uds 库
 # 开发环境和 PyInstaller 打包后都能正确找到 lib/ 路径
@@ -20,6 +21,7 @@ from calibration import CalibrationManager, OAResultReceiver
 from sync import TimeSyncManager
 from dtc import DTCManager
 from ota.version_query import query_version, DID_SOFTWARE, DID_HARDWARE
+from ota.ota import run_ota
 import can
 from bus_recorder import BusRecorder
 
@@ -86,6 +88,9 @@ class Application:
         self.gui.btn_ver_fr._command = lambda: self._on_query_version('FR')
         self.gui.btn_ver_rl._command = lambda: self._on_query_version('RL')
         self.gui.btn_ver_rr._command = lambda: self._on_query_version('RR')
+
+        # OTA 开始升级按钮
+        self.gui.btn_ota_start._command = self._on_ota_start
 
         # 版本说明弹窗按钮
         self.gui.btn_version._command = self.gui._show_version_info
@@ -352,6 +357,60 @@ class Application:
             sw_var.set(sw_str)
         if hw_var is not None:
             hw_var.set(hw_str)
+
+    def _on_ota_start(self):
+        """开始 OTA 升级：校验输入后在子线程执行，失败不影响 GUI 主线程"""
+        hex_path = self.gui.ota_file_var.get()
+        if not hex_path or not os.path.isfile(hex_path):
+            self.gui.log('[OTA WARN] 请先选择有效的 hex 固件文件', 'ERROR')
+            return
+        channel = self.gui.get_channel_number()
+        if not channel:
+            self.gui.log('[OTA WARN] 请先选择 CAN 通道', 'ERROR')
+            return
+        _, bitrate, data_bitrate = self.gui.get_channel_info()
+        if not bitrate or not data_bitrate:
+            self.gui.log('[OTA WARN] 请先设置波特率和数据波特率', 'ERROR')
+            return
+
+        # 重置进度与结果提示
+        self.gui.ota_status_var.set("")
+        self.gui.ota_progress_var.set(0)
+        self.gui.ota_progress_text_var.set("正在升级...")
+        self.gui.ota_set_running(True)
+        threading.Thread(target=self._ota_worker, daemon=True,
+                         args=(int(channel), int(bitrate), int(data_bitrate), hex_path)).start()
+
+    def _ota_worker(self, channel, bitrate, data_bitrate, hex_path):
+        """OTA 升级线程：专用总线（BusRecorder 包装，流量写入独立 .asc），所有异常在此捕获"""
+        bus = None
+        try:
+            # OTA 使用专用总线（刷写需独占总线，不与 DTC/OA 接收线程共用主连接），
+            # 与主连接一致用 BusRecorder 记录流量，输出到独立的 *_OTA.asc
+            asc_path = os.path.join('OUT', datetime.now().strftime('%Y%m%d%H%M%S') + '_OTA.asc')
+            os.makedirs('OUT', exist_ok=True)
+            bus = BusRecorder(can.interface.Bus(
+                interface="kvaser", channel=channel, bitrate=bitrate,
+                data_bitrate=data_bitrate, fd=True), asc_path)
+            run_ota(bus, hex_path,
+                    progress_callback=self.gui.ota_update_progress,
+                    log_callback=self.gui.log)
+            self.root.after_idle(lambda: self.gui.ota_set_result(True, '升级成功'))
+        except Exception as e:
+            err = str(e)
+            self.gui.log(f'[OTA ERROR] 升级失败: {err}', 'ERROR')
+            # 失败提示：状态栏红字 + 错误弹窗（切回主线程执行）
+            self.root.after_idle(lambda: self._ota_fail(err))
+        finally:
+            # run_ota 的 finally 已停 ISO-TP 线程，这里释放总线（BusRecorder 同步停止日志）
+            if bus is not None:
+                bus.shutdown()
+            self.root.after_idle(lambda: self.gui.ota_set_running(False))
+
+    def _ota_fail(self, err):
+        """OTA 失败提示（主线程）：状态栏红字 + 错误弹窗"""
+        self.gui.ota_set_result(False, f'升级失败: {err}')
+        messagebox.showerror('OTA 升级失败', err)
 
     def _refresh_channels(self):
         """扫描可用 CAN 通道，更新下拉列表，完成后恢复鼠标样式"""

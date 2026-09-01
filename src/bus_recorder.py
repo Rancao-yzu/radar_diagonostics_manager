@@ -4,7 +4,8 @@ import can
 import time
 
 
-class BusRecorder:
+class BusRecorder(can.BusABC):
+    """继承 can.BusABC 以通过 isotp.CanStack 的 isinstance(bus, BusABC) 校验"""
 
     def __init__(self, bus, blf_path):
         self._bus = bus
